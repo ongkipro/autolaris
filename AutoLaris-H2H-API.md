@@ -39,7 +39,7 @@ Content-Type: application/json
 | Item | Nilai |
 |---|---|
 | Base URL | `https://api-h2h.autolaris.com` |
-| API Key (Development) | `5fe67ad04a28099fb06b4e185ccf77124a777033913c5525fb49acf59e47b561` |
+| API Key (Development) | `<API_KEY>` |
 | Dashboard seller | https://seller.autolaris.com |
 | Daftar akun | https://seller.autolaris.com/daftar |
 | Akses production | Wajib **Whitelist IP Address** (maks. 5 IP) |

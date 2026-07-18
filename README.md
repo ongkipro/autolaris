@@ -70,7 +70,7 @@ Panduan lengkap untuk mengintegrasikan layanan AutoLaris H2H: cek ongkir, buat r
 | Item | Nilai |
 |---|---|
 | Base URL | `https://api-h2h.autolaris.com` |
-| API Key (Development) | `5fe67ad04a28099fb06b4e185ccf77124a777033913c5525fb49acf59e47b561` |
+| API Key (Development) | `<API_KEY>` |
 | Header | `Authorization: Bearer <API_KEY>` |
 | Dashboard | https://seller.autolaris.com · [daftar](https://seller.autolaris.com/daftar) |
 
