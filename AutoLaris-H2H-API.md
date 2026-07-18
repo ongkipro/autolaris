@@ -417,9 +417,13 @@ Membuat tagihan pembayaran (Virtual Account / QRIS / E-Wallet). **Detail lengkap
 | `VAMANDIRI` | Mandiri Virtual Account |
 | `VABNI` | BNI Virtual Account |
 | `VABRI` | BRI Virtual Account |
-| `VABSI` | BSI Virtual Account |
 | `VAPERMATA` | Permata Virtual Account |
+| `VABSI` | BSI Virtual Account |
+| `VACIMB` | CIMB Niaga Virtual Account |
+| `VADANAMON` | Danamon Virtual Account |
 | `DANA` | E-Wallet DANA |
+
+> **Tidak ada endpoint list-channels.** Aktif-tidaknya channel bergantung konfigurasi akun; cek dengan probe `create_payment`: `rc = "00"` = channel aktif, `rc = "07"` = tidak aktif. Detail di [dokumentasi payment](./AutoLaris-Payment-Gateway-API.md#5-daftar-channel-code-create-payment).
 
 ### Response — `200 OK`
 
@@ -569,10 +573,14 @@ $payment = autolaris('/api/h2h/create_payment', [
 
 ## Ringkasan Response Code
 
-| `rc` | Arti |
-|---|---|
-| `00` | Sukses |
-| selain `00` | Gagal — baca `ket` |
+| `rc` | `ket` (contoh) | Arti |
+|---|---|---|
+| `00` | `Success` / `Sukses` | Sukses — proses `data` |
+| `01` | `Invalid parameter` | Parameter tidak valid / field wajib kurang (diverifikasi live di `create_payment`) |
+| `07` | — | Channel pembayaran tidak aktif untuk akun ini (`create_payment`) |
+| selain di atas | — | Gagal — baca `ket` |
+
+> `01` & `07` diverifikasi live 2026-07-19 pada `create_payment`. Untuk endpoint lain, tangani semua `rc != "00"` sebagai kegagalan generik dan log `ket`.
 
 ## Catatan Penting
 

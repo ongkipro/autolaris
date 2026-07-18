@@ -162,6 +162,32 @@ Membuat tagihan pembayaran baru.
 > - `DANA` → kemungkinan `url` / `payment_code` terisi (redirect/deeplink ke aplikasi).
 > Selalu cek field mana yang non-kosong sesuai channel yang dipilih.
 
+### 4.5 Contoh Response QRIS (diverifikasi live 2026-07-19)
+
+Request `channel_code = "QRIS"`, `amount = "10000"` menghasilkan:
+
+```json
+{
+  "rc": "00",
+  "ket": "Sukses",
+  "data": {
+    "trx_id": "...",
+    "virtual_account": "",
+    "qr": "00020101021226...5204...5303360540510000...6304XXXX",
+    "payment_code": "",
+    "url": "",
+    "amount": 10000,
+    "admin": 70,
+    "total": 10070
+  }
+}
+```
+
+- `admin` untuk QRIS pada contoh ini **70** (biaya admin berbeda per channel; VA bisa berbeda). Tagihkan `total` (`10070`), bukan `amount`.
+- `qr` adalah **payload EMVCo** siap di-render jadi gambar QR (mis. pakai library QR di sisi partner).
+
+> **Catatan white-label (nama merchant di QRIS).** Payload EMVCo pada `qr` memuat tag **59 (Merchant Name)** yang berisi **nama merchant terdaftar milik akun AutoLaris**, dan payload di-tandatangani **CRC (tag 63)**. Nama merchant ini **tidak bisa ditimpa/ditulis ulang dari kode** — mengubah string `qr` akan merusak CRC dan membuat QR ditolak. Untuk menampilkan nama merchant tertentu (mis. white-label per tenant), atur lewat **onboarding/registrasi merchant di akun AutoLaris**, bukan di sisi integrasi.
+
 ---
 
 ## 5. Daftar Channel Code (Create Payment)
@@ -173,9 +199,17 @@ Membuat tagihan pembayaran baru.
 | `VAMANDIRI` | Mandiri Virtual Account |
 | `VABNI` | BNI Virtual Account |
 | `VABRI` | BRI Virtual Account |
-| `VABSI` | BSI Virtual Account |
 | `VAPERMATA` | Permata Virtual Account |
+| `VABSI` | BSI Virtual Account |
+| `VACIMB` | CIMB Niaga Virtual Account |
+| `VADANAMON` | Danamon Virtual Account |
 | `DANA` | E-Wallet DANA |
+
+> **Tidak ada endpoint list-channels.** AutoLaris tidak menyediakan endpoint untuk melihat channel yang aktif pada suatu akun. Cara paling andal memastikan sebuah channel aktif adalah **memanggil `create_payment`** dengan `channel_code` tersebut:
+> - `rc = "00"` → channel **aktif** (VA/QR ter-generate).
+> - `rc = "07"` → channel **tidak aktif** untuk akun ini (aktifkan lewat onboarding/dashboard AutoLaris).
+>
+> Aktif-tidaknya sebuah channel bergantung pada konfigurasi akun; daftar di atas adalah kode yang **teramati**, bukan jaminan semuanya aktif.
 
 ---
 
@@ -297,12 +331,15 @@ public function callback(Request $request)
 
 ## 7. Response Code & Penanganan Error
 
-| `rc` | Arti |
-|---|---|
-| `00` | Sukses |
-| selain `00` | Gagal — lihat `ket` untuk detail pesan error |
+| `rc` | `ket` (contoh) | Arti |
+|---|---|---|
+| `00` | `Sukses` | Transaksi berhasil dibuat — proses `data` |
+| `01` | `Invalid parameter` | Parameter request tidak valid / field wajib kurang / format salah |
+| `07` | — | Channel tidak aktif untuk akun ini (`channel_code` belum diaktifkan) |
+| selain di atas | — | Gagal — lihat `ket` untuk detail pesan error |
 
 > Selalu cek `rc == "00"` sebelum memproses `data`. Tangani non-`00` sebagai kegagalan dan log `ket`.
+> `rc`, `ket`, `01`, dan `07` **diverifikasi live** 2026-07-19 (lihat §13). Kode lain di luar daftar tetap perlu ditangani sebagai kegagalan generik.
 
 ### Matriks penanganan error (rekomendasi sisi partner)
 
@@ -453,6 +490,17 @@ $data = $res['data']; // trx_id, virtual_account / qr / url, total
 | 6 | Besaran biaya `admin` per channel (flat/persentase?) |
 | 7 | Batas minimum/maksimum `amount` per channel |
 | 8 | Perilaku jika `reff_id` dikirim ulang (sama hari / beda hari) |
+
+---
+
+## 13. Catatan Verifikasi Live
+
+> **2026-07-19 — diverifikasi live saat integrasi Formalin** (base `https://api-h2h.autolaris.com`):
+> - `POST /api/h2h/create_payment` dengan header `Authorization: Bearer <API_KEY>` mengembalikan `rc = "00"` beserta VA/QR asli.
+> - **Tabel `rc`** terkonfirmasi: `00` = Sukses, `01` = `Invalid parameter`, `07` = channel tidak aktif (§7).
+> - Response `data` menyertakan `admin` + `total` (`total = amount + admin`); contoh QRIS `amount 10000 → admin 70 → total 10070` (§4.5).
+> - **Nama merchant pada QRIS** ditentukan oleh akun (tag 59 EMVCo, CRC-signed) — dikonfigurasi via onboarding, bukan via kode (§4.5).
+> - **Tidak ada endpoint list-channels**; status channel dicek dengan probe `create_payment` (`00` aktif / `07` tidak aktif) (§5).
 
 ---
 

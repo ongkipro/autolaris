@@ -17,7 +17,7 @@ Panduan lengkap untuk mengintegrasikan layanan AutoLaris H2H: cek ongkir, buat r
 ![Endpoints](https://img.shields.io/badge/endpoints-5-8b5cf6?style=flat-square)
 ![Kurir](https://img.shields.io/badge/kurir-8%2B-16a34a?style=flat-square)
 ![QRIS](https://img.shields.io/badge/QRIS-✓-111?style=flat-square)
-![Virtual Account](https://img.shields.io/badge/Virtual%20Account-6%20bank-2563eb?style=flat-square)
+![Virtual Account](https://img.shields.io/badge/Virtual%20Account-8%20bank-2563eb?style=flat-square)
 ![DANA](https://img.shields.io/badge/E--Wallet-DANA-118EEA?style=flat-square)
 
 </div>
@@ -63,7 +63,7 @@ Panduan lengkap untuk mengintegrasikan layanan AutoLaris H2H: cek ongkir, buat r
 | 🔑 **Auth** | `Authorization: Bearer <API_KEY>` |
 | 📦 **Content-Type** | `application/json` |
 | 📨 **Format** | `{ "rc": "00", "ket": "...", "data": {...} }` |
-| 🧾 **Channel bayar** | QRIS · 6 Virtual Account · DANA |
+| 🧾 **Channel bayar** | QRIS · 8 Virtual Account · DANA (aktif bergantung akun) |
 
 ### 🔐 Kredensial
 
@@ -182,11 +182,14 @@ const { trx_id, virtual_account, qr, url, total } = json.data;
 | `VAMANDIRI` | Mandiri Virtual Account | 🏦 VA |
 | `VABNI` | BNI Virtual Account | 🏦 VA |
 | `VABRI` | BRI Virtual Account | 🏦 VA |
-| `VABSI` | BSI Virtual Account | 🏦 VA |
 | `VAPERMATA` | Permata Virtual Account | 🏦 VA |
+| `VABSI` | BSI Virtual Account | 🏦 VA |
+| `VACIMB` | CIMB Niaga Virtual Account | 🏦 VA |
+| `VADANAMON` | Danamon Virtual Account | 🏦 VA |
 | `DANA` | E-Wallet DANA | 👛 E-Wallet |
 
 > 💡 Field instruksi bayar pada response menyesuaikan channel: `VA*` → `virtual_account`, `QRIS` → `qr`, `DANA` → `url`.
+> 🔎 **Tidak ada endpoint list-channels.** Aktif-tidaknya channel bergantung konfigurasi akun — cek via probe `create_payment`: `rc = "00"` (aktif) / `rc = "07"` (tidak aktif).
 
 ## 📥 Response
 
@@ -210,6 +213,11 @@ const { trx_id, virtual_account, qr, url, total } = json.data;
 > [!IMPORTANT]
 > Tagihkan **`total`** (sudah termasuk `admin`) ke pelanggan, dan selalu cek **`rc == "00"`** sebelum memproses `data`.
 
+**Response code** (diverifikasi live 2026-07-19): `00` = Sukses · `01` = `Invalid parameter` · `07` = channel tidak aktif.
+
+> [!NOTE]
+> Untuk **QRIS**, `qr` adalah payload EMVCo dan **nama merchant** (tag 59, CRC-signed) berasal dari **akun AutoLaris terdaftar** — tidak bisa ditimpa dari kode; atur via onboarding merchant. Contoh live QRIS: `amount 10000 → admin 70 → total 10070`.
+
 ## 📚 Dokumentasi Lengkap
 
 <table>
@@ -227,7 +235,7 @@ Referensi **5 endpoint** lengkap:
 
 ### 💳 [AutoLaris-Payment-Gateway-API.md](./AutoLaris-Payment-Gateway-API.md)
 Fokus **payment gateway**:
-- 🏦 8 channel (VA/QRIS/DANA) detail
+- 🏦 10 channel code (VA/QRIS/DANA) detail + cara probe channel aktif
 - 🔔 Callback + handler **Node.js** & **PHP/Laravel**
 - ⚠️ Error-handling & anti double-charge
 - ✅ Checklist go-live
