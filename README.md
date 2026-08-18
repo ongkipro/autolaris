@@ -1,256 +1,147 @@
-<div align="center">
+# AutoLaris H2H API
 
-# 🚚 AutoLaris H2H API
+Dokumentasi integrasi AutoLaris untuk ongkir, pengiriman, tracking, payment gateway, dan order terpadu.
 
-### Dokumentasi integrasi partner — **Ongkir · Resi · Tracking · Cancel · Payment Gateway**
+> Snapshot kontrak: koleksi Postman AutoLaris `latest`, diperiksa 2026-08-18. API dapat berubah tanpa versioned path; jalankan smoke test dengan credential development sebelum go-live.
 
-Panduan lengkap untuk mengintegrasikan layanan AutoLaris H2H: cek ongkir, buat resi, lacak kiriman, batalkan resi, dan **payment gateway** (Virtual Account · QRIS · E-Wallet DANA) beserta alur callback.
+## Mulai di sini
 
-<br/>
+1. Minta API Key melalui [dashboard seller](https://seller.autolaris.com). Akses production membutuhkan whitelist maksimal 5 IP.
+2. Simpan key hanya di server sebagai `AUTOLARIS_API_KEY`. Jangan kirim key ke browser atau commit ke repository.
+3. Pilih panduan:
 
-![Status](https://img.shields.io/badge/status-stable-22c55e?style=for-the-badge)
-![Type](https://img.shields.io/badge/type-API%20Docs-3b82f6?style=for-the-badge)
-![Auth](https://img.shields.io/badge/auth-Bearer%20Token-f59e0b?style=for-the-badge)
-![License](https://img.shields.io/badge/license-MIT-0ea5e9?style=for-the-badge)
-![Made in](https://img.shields.io/badge/made%20in-Indonesia%20%F0%9F%87%AE%F0%9F%87%A9-e11d48?style=for-the-badge)
-
-![Endpoints](https://img.shields.io/badge/endpoints-5-8b5cf6?style=flat-square)
-![Kurir](https://img.shields.io/badge/kurir-8%2B-16a34a?style=flat-square)
-![QRIS](https://img.shields.io/badge/QRIS-✓-111?style=flat-square)
-![Virtual Account](https://img.shields.io/badge/Virtual%20Account-8%20bank-2563eb?style=flat-square)
-![DANA](https://img.shields.io/badge/E--Wallet-DANA-118EEA?style=flat-square)
-
-</div>
-
----
-
-> [!NOTE]
-> Dokumentasi integrasi partner untuk **AutoLaris H2H API**.
-
-## 📚 Dokumentasi
-
-| Dokumen | Cakupan |
+| Kebutuhan | Dokumen |
 |---|---|
-| 📘 **[AutoLaris-H2H-API.md](./AutoLaris-H2H-API.md)** | **Referensi lengkap 5 endpoint** — Ongkir, Resi, Tracking, Cancel, Payment |
-| 💳 **[AutoLaris-Payment-Gateway-API.md](./AutoLaris-Payment-Gateway-API.md)** | Fokus **payment gateway** — callback, handler Node/PHP, error-handling, go-live |
+| Referensi 7 endpoint dan payload | [AutoLaris-H2H-API.md](./AutoLaris-H2H-API.md) |
+| Payment, channel, callback, rekonsiliasi | [AutoLaris-Payment-Gateway-API.md](./AutoLaris-Payment-Gateway-API.md) |
+| Copy-paste Astro, Next.js, Node.js, Cloudflare Workers, PHP | [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md) |
+| Kontrak machine-readable | [openapi.json](./openapi.json) |
 
-## 🧩 Daftar Endpoint
+## Endpoint
 
-| # | Service | Method | Endpoint |
-|---|---|---|---|
-| 1 | Cek Ongkir | `POST` | `/api/h2h/ongkir` |
-| 2 | Create Resi | `POST` | `/api/h2h/order` |
-| 3 | Tracking | `POST` | `/api/h2h/lacak` |
-| 4 | Cancel Resi | `POST` | `/api/h2h/cancel` |
-| 5 | Create Payment | `POST` | `/api/h2h/create_payment` |
+Base URL: `https://api-h2h.autolaris.com`
 
-## 📑 Daftar Isi
+| Service | Method | Path | Fungsi |
+|---|---:|---|---|
+| Cek Ongkir | `POST` | `/api/h2h/ongkir` | Daftar layanan, tarif, dan `courir_id` |
+| Create Resi | `POST` | `/api/h2h/order` | Membuat resi reguler atau COD |
+| Tracking | `POST` | `/api/h2h/lacak` | Status dan histori berdasarkan `awb` |
+| Cancel Resi | `POST` | `/api/h2h/cancel` | Membatalkan resi berdasarkan `transaction_id` |
+| Create Payment | `POST` | `/api/h2h/create_payment` | Membuat tagihan VA, QRIS, atau e-wallet |
+| List Payment Channel | `GET` | `/api/h2h/list_payment` | Channel aktif dan biaya admin akun |
+| Create Order | `POST` | `/api/h2h/submit` | Membuat order, pengiriman, dan payment sekaligus |
 
-- [Sekilas](#-sekilas)
-- [Alur Integrasi](#-alur-integrasi)
-- [Quick Start](#-quick-start)
-- [Channel Pembayaran](#-channel-pembayaran)
-- [Response](#-response)
-- [Dokumentasi Lengkap](#-dokumentasi-lengkap)
-- [Sumber & Lisensi](#-sumber--lisensi)
+Semua endpoint memakai:
 
-## ✨ Sekilas
-
-| | |
-|---|---|
-| 🌐 **Base URL** | `https://api-h2h.autolaris.com` |
-| 📮 **Endpoint** | 5 service (lihat tabel di atas) |
-| 🔑 **Auth** | `Authorization: Bearer <API_KEY>` |
-| 📦 **Content-Type** | `application/json` |
-| 📨 **Format** | `{ "rc": "00", "ket": "...", "data": {...} }` |
-| 🧾 **Channel bayar** | QRIS · 8 Virtual Account · DANA (aktif bergantung akun) |
-
-### 🔐 Kredensial
-
-| Item | Nilai |
-|---|---|
-| Base URL | `https://api-h2h.autolaris.com` |
-| API Key (Development) | `<API_KEY>` |
-| Header | `Authorization: Bearer <API_KEY>` |
-| Dashboard | https://seller.autolaris.com · [daftar](https://seller.autolaris.com/daftar) |
-
-> ⚠️ Key di atas untuk **development**. Akses production wajib whitelist IP (maks 5); simpan key production sebagai secret.
-
-## 🔄 Alur Integrasi
-
-**Pengiriman** (Ongkir → Resi → Tracking → Cancel):
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant P as 🧑‍💻 Partner
-    participant A as 🏢 AutoLaris
-    P->>A: Cek Ongkir (origin, destination, berat, dimensi)
-    A-->>P: daftar kurir + courir_id + harga
-    P->>A: Create Resi (courir_id, alamat, order_details)
-    A-->>P: awb + transaction_id
-    P->>A: Tracking (awb)
-    A-->>P: status + histories
-    opt batalkan
-        P->>A: Cancel Resi (transaction_id)
-        A-->>P: sukses
-    end
+```http
+Authorization: Bearer <API_KEY>
+Content-Type: application/json
 ```
 
-**Pembayaran** (Payment Gateway):
+`Content-Type` tidak diperlukan untuk `GET /api/h2h/list_payment`.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant P as 🧑‍💻 Partner
-    participant A as 🏢 AutoLaris
-    participant C as 🛒 Pelanggan
-    P->>A: Create Payment (channel, amount, callback_url)
-    A-->>P: 200 { trx_id, VA/QRIS/url, total }
-    P->>C: Tampilkan instruksi bayar
-    C->>A: Bayar sebelum expired
-    A->>P: Callback status (PAID)
-    P-->>A: HTTP 200
-    Note over P: Update order → PAID
-```
+## Quick start
 
-## 🚀 Quick Start
-
-**Cek Ongkir**
+Cek channel yang aktif untuk akun:
 
 ```bash
-curl -X POST "https://api-h2h.autolaris.com/api/h2h/ongkir" \
-  -H "Authorization: Bearer <API_KEY>" \
-  -H "Content-Type: application/json" \
-  -d '{ "origin": 3515140, "destination": 3173060, "weight": "1000", "length": "10", "width": "20", "height": "30" }'
+curl --fail-with-body \
+  -H "Authorization: Bearer $AUTOLARIS_API_KEY" \
+  "https://api-h2h.autolaris.com/api/h2h/list_payment"
 ```
 
-**Create Payment**
+Cek ongkir:
 
 ```bash
-curl -X POST "https://api-h2h.autolaris.com/api/h2h/create_payment" \
-  -H "Authorization: Bearer <API_KEY>" \
+curl --fail-with-body \
+  -X POST \
+  -H "Authorization: Bearer $AUTOLARIS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "reff_id": "ORD-001",
-    "channel_code": "VAMANDIRI",
-    "customer_id": "31857118",
-    "customer_name": "Budi Santoso",
-    "customer_phone": "081234567890",
-    "customer_email": "customer@example.com",
-    "expired": "20270422094000",
-    "amount": "25000",
-    "callback_url": "https://your-domain.com/autolaris/callback"
+  "https://api-h2h.autolaris.com/api/h2h/ongkir" \
+  --data '{
+    "origin": 3515140,
+    "destination": 3173060,
+    "weight": "1000",
+    "length": "10",
+    "width": "20",
+    "height": "30"
   }'
 ```
 
-<details>
-<summary><b>Node.js (fetch)</b></summary>
-
-```js
-const res = await fetch("https://api-h2h.autolaris.com/api/h2h/create_payment", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${process.env.AUTOLARIS_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    reff_id: "ORD-001",
-    channel_code: "QRIS",
-    customer_id: "31857118",
-    customer_name: "Budi Santoso",
-    customer_phone: "081234567890",
-    customer_email: "customer@example.com",
-    expired: "20270422094000",
-    amount: "25000",
-    callback_url: "https://your-domain.com/autolaris/callback",
-  }),
-});
-const json = await res.json();
-if (json.rc !== "00") throw new Error(json.ket);
-const { trx_id, virtual_account, qr, url, total } = json.data;
-```
-
-</details>
-
-## 🏦 Channel Pembayaran
-
-| Kode | Channel | Tipe |
-|---|---|:---:|
-| `QRIS` | QRIS | 📱 QR |
-| `VABCA` | BCA Virtual Account | 🏦 VA |
-| `VAMANDIRI` | Mandiri Virtual Account | 🏦 VA |
-| `VABNI` | BNI Virtual Account | 🏦 VA |
-| `VABRI` | BRI Virtual Account | 🏦 VA |
-| `VAPERMATA` | Permata Virtual Account | 🏦 VA |
-| `VABSI` | BSI Virtual Account | 🏦 VA |
-| `VACIMB` | CIMB Niaga Virtual Account | 🏦 VA |
-| `VADANAMON` | Danamon Virtual Account | 🏦 VA |
-| `DANA` | E-Wallet DANA | 👛 E-Wallet |
-
-> 💡 Field instruksi bayar pada response menyesuaikan channel: `VA*` → `virtual_account`, `QRIS` → `qr`, `DANA` → `url`.
-> 🔎 **Tidak ada endpoint list-channels.** Aktif-tidaknya channel bergantung konfigurasi akun — cek via probe `create_payment`: `rc = "00"` (aktif) / `rc = "07"` (tidak aktif).
-
-## 📥 Response
+Response sukses tetap harus diperiksa pada level payload:
 
 ```json
 {
   "rc": "00",
-  "ket": "Sukses",
-  "data": {
-    "trx_id": "671647",
-    "virtual_account": "8779611150001393",
-    "qr": "",
-    "payment_code": "",
-    "url": "",
-    "amount": 25000,
-    "admin": 3000,
-    "total": 28000
-  }
+  "ket": "Success",
+  "data": {}
 }
 ```
 
-> [!IMPORTANT]
-> Tagihkan **`total`** (sudah termasuk `admin`) ke pelanggan, dan selalu cek **`rc == "00"`** sebelum memproses `data`.
+HTTP `200` tidak selalu berarti operasi berhasil. Proses `data` hanya jika `rc === "00"`.
 
-**Response code** (diverifikasi live 2026-07-19): `00` = Sukses · `01` = `Invalid parameter` · `07` = channel tidak aktif.
+## Alur yang tersedia
 
-> [!NOTE]
-> Untuk **QRIS**, `qr` adalah payload EMVCo dan **nama merchant** (tag 59, CRC-signed) berasal dari **akun AutoLaris terdaftar** — tidak bisa ditimpa dari kode; atur via onboarding merchant. Contoh live QRIS: `amount 10000 → admin 70 → total 10070`.
+### Pengiriman terpisah
 
-## 📚 Dokumentasi Lengkap
+```mermaid
+sequenceDiagram
+    participant App as Partner server
+    participant API as AutoLaris
+    App->>API: POST /ongkir
+    API-->>App: service_detail[] + courir_id
+    App->>API: POST /order
+    API-->>App: awb + transaction_id
+    App->>API: POST /lacak
+    API-->>App: stats + histories[]
+    opt Batalkan
+        App->>API: POST /cancel
+    end
+```
 
-<table>
-<tr><td width="50%" valign="top">
+### Order terpadu
 
-### 📘 [AutoLaris-H2H-API.md](./AutoLaris-H2H-API.md)
-Referensi **5 endpoint** lengkap:
-- 🚚 Cek Ongkir (kurir, tarif, `courir_id`)
-- 📦 Create Resi (Reguler/COD, `order_details`)
-- 🔍 Tracking (histories, POD, status)
-- ❌ Cancel Resi
-- 💳 Create Payment (ringkas)
+`POST /api/h2h/submit` menggabungkan data order, pengiriman, dan `channel_code`. Response dapat berisi biaya, pickup, buyer, dan instruksi payment (`va`, `qr`, atau `url`). Gunakan endpoint ini bila alur bisnis memang membutuhkan satu transaksi terpadu; jangan panggil `create_payment` lagi untuk order yang sama tanpa rekonsiliasi.
 
-</td><td width="50%" valign="top">
+## Integrasi framework
 
-### 💳 [AutoLaris-Payment-Gateway-API.md](./AutoLaris-Payment-Gateway-API.md)
-Fokus **payment gateway**:
-- 🏦 10 channel code (VA/QRIS/DANA) detail + cara probe channel aktif
-- 🔔 Callback + handler **Node.js** & **PHP/Laravel**
-- ⚠️ Error-handling & anti double-charge
-- ✅ Checklist go-live
-- ❓ Pertanyaan terbuka untuk vendor
+| Stack | Lokasi aman untuk API Key | Pola yang disarankan |
+|---|---|---|
+| Astro | `import.meta.env.AUTOLARIS_API_KEY` pada server | Server endpoint dengan `prerender = false` |
+| Next.js App Router | `process.env.AUTOLARIS_API_KEY` | Route Handler atau Server Action |
+| Node.js | Environment process | Modul server menggunakan native `fetch` |
+| Cloudflare Workers | Secret binding | Worker `fetch()` langsung ke AutoLaris |
+| PHP/Laravel | Environment / secret manager | Server-side cURL atau HTTP client |
 
-</td></tr>
-</table>
+Jangan memanggil AutoLaris langsung dari Client Component, browser script, atau public Astro island. Detail copy-paste ada di [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md).
 
-## 🔗 Sumber & Lisensi
+## Batas kontrak yang belum dipublikasikan
 
-- 🏪 Dashboard seller / request API Key → https://seller.autolaris.com
-- 📝 Daftar akun → https://seller.autolaris.com/daftar
+Koleksi sumber belum mendefinisikan:
 
-> Dokumentasi untuk tujuan integrasi. Seluruh merek dagang milik **AutoLaris**. Konfirmasikan detail final (format payload callback, zona waktu `expired`, signature) ke tim AutoLaris sebelum produksi.
+- payload, signature, retry policy, dan source IP callback;
+- endpoint inquiry status payment;
+- timezone resmi field `expired`;
+- aturan idempotensi lengkap untuk `create_payment` dan `submit`;
+- daftar seluruh error code.
 
-📄 Lisensi dokumentasi: **[MIT](./LICENSE)**.
+Karena itu, contoh callback di repository ini tidak mengasumsikan transaksi `PAID`. Konfirmasikan kontrak callback ke AutoLaris sebelum production.
 
-<div align="center"><sub>Dibuat untuk mempermudah developer Indonesia 🇮🇩 mengintegrasikan AutoLaris Payment Gateway.</sub></div>
+## Sumber
+
+- [Koleksi Postman AutoLaris H2H](https://documenter.getpostman.com/view/25938923/2sB2iwFuwz)
+- [Dashboard seller](https://seller.autolaris.com)
+- [Pendaftaran akun](https://seller.autolaris.com/daftar)
+- [Data area origin/destination](https://docs.google.com/spreadsheets/d/130zcs6uHmEtHuPc-WFx0BjlVjo7Ag6WmeUGiYozvRAk/edit?usp=sharing)
+
+Working tree saat ini hanya menyimpan placeholder `<API_KEY>`. Namun, development credential pernah ter-commit dan masih dapat dipulihkan dari riwayat Git. Anggap credential tersebut compromised dan lakukan rotasi melalui AutoLaris. Penghapusan dari file terbaru tidak mencabut key; pembersihan history membutuhkan coordinated history rewrite dan force-push, sehingga tidak dilakukan oleh pembaruan dokumentasi ini.
+
+## Validasi repository
+
+```bash
+npm test
+```
+
+Command tersebut memakai Node.js bawaan, tanpa dependency tambahan, untuk memeriksa OpenAPI, endpoint matrix, local links, code fences, dan accidental token leakage.
+
+Lisensi: [MIT](./LICENSE).

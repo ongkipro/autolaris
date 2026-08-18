@@ -1,0 +1,9 @@
+{
+  "name": "autolaris-h2h-api-docs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/validate-docs.mjs"
+  }
+}

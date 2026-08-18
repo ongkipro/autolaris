@@ -1,0 +1,399 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "AutoLaris H2H API",
+    "version": "2026-08-18",
+    "description": "Repository snapshot of the public AutoLaris Postman collection. Field requiredness is derived from published request examples because a formal required/optional matrix is not available. Confirm callback, idempotency, rate-limit, and timezone contracts before production."
+  },
+  "externalDocs": {
+    "description": "AutoLaris public Postman documentation",
+    "url": "https://documenter.getpostman.com/view/25938923/2sB2iwFuwz"
+  },
+  "servers": [
+    {
+      "url": "https://api-h2h.autolaris.com",
+      "description": "AutoLaris H2H"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    { "name": "Shipping" },
+    { "name": "Payment" },
+    { "name": "Order" }
+  ],
+  "paths": {
+    "/api/h2h/ongkir": {
+      "post": {
+        "operationId": "getShippingQuotes",
+        "summary": "Cek ongkir",
+        "tags": ["Shipping"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ShippingQuoteRequest" },
+              "example": {
+                "origin": 3515140,
+                "destination": 3173060,
+                "weight": "1000",
+                "length": "10",
+                "width": "20",
+                "height": "30"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope; rc 00 indicates success",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/ErrorResponse" }
+        }
+      }
+    },
+    "/api/h2h/order": {
+      "post": {
+        "operationId": "createShipment",
+        "summary": "Create resi",
+        "tags": ["Shipping"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateShipmentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns awb, transaction_id, and reff_id when rc is 00",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/ErrorResponse" }
+        }
+      }
+    },
+    "/api/h2h/lacak": {
+      "post": {
+        "operationId": "trackShipment",
+        "summary": "Tracking",
+        "tags": ["Shipping"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TrackingRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns shipment status and histories when rc is 00",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/ErrorResponse" }
+        }
+      }
+    },
+    "/api/h2h/cancel": {
+      "post": {
+        "operationId": "cancelShipment",
+        "summary": "Cancel resi",
+        "tags": ["Shipping"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CancelShipmentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful cancellation may return an empty data array",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/ErrorResponse" }
+        }
+      }
+    },
+    "/api/h2h/create_payment": {
+      "post": {
+        "operationId": "createPayment",
+        "summary": "Create payment",
+        "description": "Creates a VA, QRIS, or e-wallet payment. Callback and idempotency contracts are not formally published.",
+        "tags": ["Payment"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreatePaymentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns trx_id, payment instruction fields, amount, admin, and total when rc is 00",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/ErrorResponse" }
+        }
+      }
+    },
+    "/api/h2h/list_payment": {
+      "get": {
+        "operationId": "listPaymentChannels",
+        "summary": "List payment channels",
+        "description": "Returns channels and account-specific fee configuration. Do not hardcode the stored example as a global channel list.",
+        "tags": ["Payment"],
+        "responses": {
+          "200": {
+            "description": "Active payment channels",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentChannelResponse" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/ErrorResponse" }
+        }
+      }
+    },
+    "/api/h2h/submit": {
+      "post": {
+        "operationId": "createOrder",
+        "summary": "Create order",
+        "description": "Creates an order with shipping and payment in one flow. The stored public response does not include an awb.",
+        "tags": ["Order"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateOrderRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns transaction, fee, pickup, buyer, and payment information when rc is 00",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/ErrorResponse" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "AutoLaris API Key. Keep server-side only."
+      }
+    },
+    "responses": {
+      "ErrorResponse": {
+        "description": "HTTP or logical failure. AutoLaris may use HTTP 200 with a non-00 rc.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ApiResponse" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "required": ["rc", "ket", "data"],
+        "properties": {
+          "rc": { "type": "string", "description": "00 indicates success" },
+          "ket": { "type": "string" },
+          "data": {
+            "description": "Endpoint-specific object or array",
+            "oneOf": [
+              { "type": "object", "additionalProperties": true },
+              { "type": "array", "items": true }
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "ShippingQuoteRequest": {
+        "type": "object",
+        "required": ["origin", "destination", "weight", "length", "width", "height"],
+        "properties": {
+          "origin": { "type": "integer" },
+          "destination": { "type": "integer" },
+          "weight": { "type": "string", "description": "Grams" },
+          "length": { "type": "string", "description": "Centimeters" },
+          "width": { "type": "string", "description": "Centimeters" },
+          "height": { "type": "string", "description": "Centimeters" }
+        },
+        "additionalProperties": false
+      },
+      "OrderItem": {
+        "type": "object",
+        "required": ["name", "qty", "unit_price"],
+        "properties": {
+          "name": { "type": "string" },
+          "qty": { "type": "string" },
+          "unit_price": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "ShipmentFields": {
+        "type": "object",
+        "properties": {
+          "reff_id": { "type": "string", "description": "Partner reference; Create Resi documents a maximum of 30 digits and daily uniqueness" },
+          "courir_id": { "oneOf": [{ "type": "integer" }, { "type": "string" }], "description": "Service ID returned by Cek Ongkir; spelling follows the API" },
+          "origin": { "type": "integer" },
+          "destination": { "type": "integer" },
+          "weight": { "type": "string" },
+          "length": { "type": "string" },
+          "width": { "type": "string" },
+          "height": { "type": "string" },
+          "shipper_name": { "type": "string" },
+          "shipper_phone": { "type": "string" },
+          "shipper_email": { "type": "string", "format": "email" },
+          "shipper_address": { "type": "string" },
+          "receiver_name": { "type": "string" },
+          "receiver_phone": { "type": "string" },
+          "receiver_email": { "type": "string", "format": "email" },
+          "receiver_address": { "type": "string" },
+          "callback_url": { "type": "string", "format": "uri" },
+          "grand_total": { "type": "string" },
+          "cod_value": { "type": "string" },
+          "longitude": { "type": "string" },
+          "latitude": { "type": "string" },
+          "remark": { "type": "string" },
+          "order_details": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderItem" }
+          }
+        }
+      },
+      "CreateShipmentRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ShipmentFields" },
+          {
+            "type": "object",
+            "required": [
+              "reff_id", "courir_id", "origin", "destination", "weight", "length", "width", "height",
+              "shipper_name", "shipper_phone", "shipper_email", "shipper_address",
+              "receiver_name", "receiver_phone", "receiver_email", "receiver_address",
+              "callback_url", "type", "grand_total", "cod_value", "order_details"
+            ],
+            "properties": {
+              "type": { "type": "integer", "enum": [1, 2], "description": "1 regular, 2 COD" }
+            }
+          }
+        ]
+      },
+      "TrackingRequest": {
+        "type": "object",
+        "required": ["awb"],
+        "properties": {
+          "awb": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "CancelShipmentRequest": {
+        "type": "object",
+        "required": ["transaction_id"],
+        "properties": {
+          "transaction_id": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "CreatePaymentRequest": {
+        "type": "object",
+        "required": [
+          "reff_id", "channel_code", "customer_id", "customer_name", "customer_phone",
+          "customer_email", "expired", "amount", "callback_url"
+        ],
+        "properties": {
+          "reff_id": { "type": "string" },
+          "channel_code": { "type": "string", "description": "Use a value returned by list_payment" },
+          "customer_id": { "type": "string" },
+          "customer_name": { "type": "string" },
+          "customer_phone": { "type": "string" },
+          "customer_email": { "type": "string", "format": "email" },
+          "expired": { "type": "string", "pattern": "^[0-9]{14}$", "description": "YYYYMMDDHHMMSS; timezone is not formally published" },
+          "amount": { "type": "string" },
+          "callback_url": { "type": "string", "format": "uri" }
+        },
+        "additionalProperties": false
+      },
+      "PaymentChannelResponse": {
+        "type": "object",
+        "required": ["rc", "ket", "data"],
+        "properties": {
+          "rc": { "type": "string" },
+          "ket": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["channel_code", "name", "admin", "tipe_admin"],
+              "properties": {
+                "channel_code": { "type": "string" },
+                "name": { "type": "string" },
+                "admin": { "type": "string" },
+                "tipe_admin": { "type": "string", "enum": ["fix", "persen"] }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
+      "CreateOrderRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ShipmentFields" },
+          {
+            "type": "object",
+            "required": [
+              "reff_id", "channel_code", "courir_id", "origin", "destination", "weight", "length", "width", "height",
+              "shipper_name", "shipper_phone", "shipper_email", "shipper_address",
+              "receiver_name", "receiver_phone", "receiver_email", "receiver_address",
+              "callback_url", "grand_total", "cod_value", "order_details"
+            ],
+            "properties": {
+              "channel_code": { "type": "string", "description": "Use a value returned by list_payment" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
