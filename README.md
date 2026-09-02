@@ -1,13 +1,21 @@
+<div align="center">
+
 # AutoLaris H2H Integration Reference
 
+**A practical, independent reference for secure server-side AutoLaris H2H integrations.**
+
+[Documentation](#start-here) · [H2H Reference](./docs/reference/h2h-api.md) · [Payment Guide](./docs/guides/payment-gateway.md) · [Integration Guide](./docs/guides/integration.md) · [OpenAPI](./openapi/autolaris-h2h.openapi.json)
+
+[![Release](https://img.shields.io/github/v/release/ongkipro/autolaris?display_name=tag&sort=semver)](https://github.com/ongkipro/autolaris/releases)
 [![Documentation validation](https://img.shields.io/badge/docs-validated-1f883d?logo=markdown&logoColor=white)](#validation)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1.0-6BA539?logo=openapiinitiative&logoColor=white)](./openapi/autolaris-h2h.openapi.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-An independent, implementation-focused reference for the AutoLaris H2H API.
-It documents shipping, tracking, payment channels, Create Order, and Advice for
-server-side integrations. This repository is **not affiliated with AutoLaris**;
-the provider's published Postman collection remains the upstream contract.
+</div>
+
+It covers shipping, tracking, payment channels, Create Order, and Advice. This
+repository is **not affiliated with AutoLaris**; the provider's published
+Postman collection remains the upstream contract.
 
 > **Contract snapshot:** AutoLaris Postman collection `latest`, reviewed on
 > 2026-09-02. The API has no versioned path. Re-test the workflow with a
