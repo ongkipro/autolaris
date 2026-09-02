@@ -1,6 +1,6 @@
 # AutoLaris H2H API — Referensi Endpoint
 
-Referensi ini mengikuti koleksi Postman AutoLaris `latest` yang diperiksa pada 2026-09-02. Nama field seperti `reff_id` dan `courir_id` mempertahankan ejaan API.
+Referensi ini mengikuti koleksi Postman AutoLaris `latest` yang diperiksa pada 2026-09-03. Nama field seperti `reff_id` dan `courir_id` mempertahankan ejaan API.
 
 Untuk contoh Astro, Next.js, Node.js, Cloudflare Workers, dan PHP, lihat [integration guide](../guides/integration.md).
 
@@ -471,6 +471,12 @@ payment-only/digital yang telah disetujui AutoLaris, gunakan `courir_id: 1` dan
 pengiriman. `channel_code` berasal dari List Payment Channel. Jangan memakai
 konvensi digital ini pada akun lain tanpa konfirmasi provider.
 
+Untuk Create Order, Postman menyatakan `reff_id` adalah referensi partner untuk
+rekonsiliasi dengan maksimum 30 digit. `callback_url` adalah callback **status
+tracking ekspedisi**, bukan bukti payment; contoh provider juga mengizinkan
+string kosong. Rekonsiliasi pembayaran tetap memakai `transaction_id` melalui
+Advice.
+
 ### Response sukses
 
 ```json
@@ -549,7 +555,7 @@ Untuk `/submit`, gunakan `data.transaction_id`. Bila flow lain menerbitkan
 `trx_id`, simpan identifier itu sebagai provider transaction ID dan kirim nilainya
 apa adanya.
 
-### Response yang telah diamati
+### Response yang telah diamati di integrasi
 
 ```json
 {
@@ -570,8 +576,9 @@ Aturan aman:
 - simpan response mentah yang sudah direduksi dari data sensitif untuk audit;
 - update lokal harus idempotent dan tidak boleh memicu pengiriman otomatis.
 
-Koleksi mempublikasikan request Advice tetapi belum memberi daftar lengkap
-response code/status atau mapping settlement final.
+Koleksi Postman mempublikasikan request Advice, tetapi tidak menyertakan contoh
+respons atau mapping settlement final. Response di atas adalah observasi
+integrasi, bukan schema resmi provider.
 
 ---
 

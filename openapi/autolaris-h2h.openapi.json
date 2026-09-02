@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "AutoLaris H2H API",
-    "version": "2026-09-02",
+    "version": "2026-09-03",
     "description": "Repository snapshot of the public AutoLaris Postman collection plus a clearly labeled merchant-specific non-physical /submit profile. Field requiredness is derived from published examples. Confirm callback, settlement-status, idempotency, rate-limit, and timezone contracts before production."
   },
   "externalDocs": {
@@ -302,7 +302,7 @@
       "ShipmentFields": {
         "type": "object",
         "properties": {
-          "reff_id": { "type": "string", "description": "Partner reference; Create Resi documents a maximum of 30 digits and daily uniqueness" },
+          "reff_id": { "type": "string", "description": "Partner reference. Public Create Order and Create Resi docs state a maximum of 30 digits; daily uniqueness is documented only for Create Resi." },
           "courir_id": { "oneOf": [{ "type": "integer" }, { "type": "string" }], "description": "Service ID returned by Cek Ongkir; spelling follows the API" },
           "origin": { "type": "integer" },
           "destination": { "type": "integer" },
@@ -318,7 +318,7 @@
           "receiver_phone": { "type": "string" },
           "receiver_email": { "type": "string", "format": "email" },
           "receiver_address": { "type": "string" },
-          "callback_url": { "type": "string", "format": "uri" },
+          "callback_url": { "type": "string", "description": "Tracking-status callback URL; the Create Order sample permits an empty string. It is not a payment-settlement callback." },
           "grand_total": { "type": "string" },
           "cod_value": { "type": "string" },
           "longitude": { "type": "string" },

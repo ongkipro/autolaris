@@ -18,7 +18,7 @@ repository is **not affiliated with AutoLaris**; the provider's published
 Postman collection remains the upstream contract.
 
 > **Contract snapshot:** AutoLaris Postman collection `latest`, reviewed on
-> 2026-09-02. The API has no versioned path. Re-test the workflow with a
+> 2026-09-03. The API has no versioned path. Re-test the workflow with a
 > development credential before every production rollout.
 
 ## What this repository provides

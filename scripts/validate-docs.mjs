@@ -55,6 +55,13 @@ const endpoints = [
   ["post", "/api/h2h/submit"],
   ["post", "/api/h2h/advice"],
 ];
+const postmanCreateOrderFields = [
+  "reff_id", "channel_code", "courir_id", "origin", "destination",
+  "weight", "length", "width", "height", "shipper_name", "shipper_phone",
+  "shipper_email", "shipper_address", "receiver_name", "receiver_phone",
+  "receiver_email", "receiver_address", "callback_url", "grand_total",
+  "cod_value", "longitude", "latitude", "remark", "order_details",
+];
 
 if (spec) {
   check(spec.openapi === "3.1.0", `${openapiFile} must use OpenAPI 3.1.0`);
@@ -105,6 +112,26 @@ if (spec) {
       `OpenAPI is missing ${method.toUpperCase()} ${path}`,
     );
   }
+
+  const createOrderSchema = spec.components?.schemas?.CreateOrderRequest;
+  const createOrderProperties = Object.assign(
+    {},
+    ...(createOrderSchema?.allOf ?? []).map((part) =>
+      part.$ref ? resolvePointer(part.$ref)?.properties : part.properties,
+    ),
+  );
+  for (const field of postmanCreateOrderFields) {
+    check(
+      Boolean(createOrderProperties[field]),
+      `Create Order schema is missing public Postman field: ${field}`,
+    );
+  }
+  check(
+    createOrderProperties.callback_url?.description
+      ?.toLowerCase()
+      .includes("tracking-status"),
+    "Create Order callback_url must be documented as tracking, not settlement",
+  );
 }
 
 for (const file of markdownFiles) {
@@ -179,6 +206,12 @@ check(
   contents.get("README.md").includes("courir_id: 1") &&
     contents.get("README.md").includes("kontrak operasional akun"),
   "README must label the non-physical courier id as an account contract",
+);
+check(
+  contents
+    .get("docs/reference/h2h-api.md")
+    .includes("callback **status\ntracking ekspedisi**"),
+  "Create Order reference must distinguish tracking callback from payment settlement",
 );
 
 if (failures.length > 0) {

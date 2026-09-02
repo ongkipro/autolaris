@@ -9,7 +9,7 @@ Dokumen ini membahas empat endpoint yang berkaitan dengan payment:
 | `POST /api/h2h/submit` | Order, pengiriman, dan payment terpadu |
 | `POST /api/h2h/advice` | Pemeriksaan status berdasarkan provider `transaction_id` |
 
-Snapshot koleksi Postman `latest` diperiksa pada 2026-09-02. Contoh implementasi lintas framework: [integration guide](./integration.md).
+Snapshot koleksi Postman `latest` diperiksa pada 2026-09-03. Contoh implementasi lintas framework: [integration guide](./integration.md).
 
 ## Profil payment-only yang direkomendasikan untuk integrasi ini
 
