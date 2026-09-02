@@ -7,7 +7,7 @@
 [Documentation](#start-here) · [H2H Reference](./docs/reference/h2h-api.md) · [Payment Guide](./docs/guides/payment-gateway.md) · [Integration Guide](./docs/guides/integration.md) · [OpenAPI](./openapi/autolaris-h2h.openapi.json)
 
 [![Release](https://img.shields.io/github/v/release/ongkipro/autolaris?display_name=tag&sort=semver)](https://github.com/ongkipro/autolaris/releases)
-[![Documentation validation](https://img.shields.io/badge/docs-validated-1f883d?logo=markdown&logoColor=white)](#validation)
+[![Documentation validation](https://github.com/ongkipro/autolaris/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/ongkipro/autolaris/actions/workflows/validate.yml)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1.0-6BA539?logo=openapiinitiative&logoColor=white)](./openapi/autolaris-h2h.openapi.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
@@ -39,7 +39,8 @@ an invented mapping for undocumented provider statuses.
 
 1. Obtain an API key from the [AutoLaris Seller Dashboard](https://seller.autolaris.com).
 2. Store it only in a server-side secret manager as `AUTOLARIS_API_KEY`; never
-   expose it in browser code or commit it to Git.
+   expose it in browser code or commit it to Git. Never reuse a credential shown
+   in a public example; treat it as exposed and rotate it through the owner.
 3. Select the document that matches the job:
 
 | Need | Read |
