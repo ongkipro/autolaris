@@ -9,7 +9,7 @@ Dokumen ini membahas empat endpoint yang berkaitan dengan payment:
 | `POST /api/h2h/submit` | Order, pengiriman, dan payment terpadu |
 | `POST /api/h2h/advice` | Pemeriksaan status berdasarkan provider `transaction_id` |
 
-Snapshot koleksi Postman `latest` diperiksa pada 2026-09-02. Contoh implementasi lintas framework: [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md).
+Snapshot koleksi Postman `latest` diperiksa pada 2026-09-02. Contoh implementasi lintas framework: [integration guide](./integration.md).
 
 ## Profil payment-only yang direkomendasikan untuk integrasi ini
 
@@ -230,7 +230,7 @@ Response menyertakan:
 - `pickup_info` dan `buyer_info`;
 - `payment_info.expired`, `payment_info.va`, `payment_info.qr`, `payment_info.url`.
 
-Payload lengkap: [Create Order pada referensi H2H](./AutoLaris-H2H-API.md#7-create-order).
+Payload lengkap: [Create Order pada referensi H2H](../reference/h2h-api.md#7-create-order).
 
 Jangan memanggil Create Payment lagi untuk `reff_id` yang sudah berhasil diproses oleh Create Order tanpa rekonsiliasi; itu berisiko membuat tagihan kedua.
 
@@ -348,6 +348,6 @@ Setelah kontrak nyata diterima, implementasikan:
 ## Sumber
 
 - [Koleksi Postman AutoLaris H2H](https://documenter.getpostman.com/view/25938923/2sB2iwFuwz)
-- [Referensi seluruh endpoint](./AutoLaris-H2H-API.md)
-- [Panduan lintas stack](./INTEGRATION-GUIDE.md)
-- [OpenAPI snapshot](./openapi.json)
+- [Referensi seluruh endpoint](../reference/h2h-api.md)
+- [Panduan lintas stack](./integration.md)
+- [OpenAPI snapshot](../../openapi/autolaris-h2h.openapi.json)

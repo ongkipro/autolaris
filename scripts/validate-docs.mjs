@@ -5,11 +5,12 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const markdownFiles = [
   "README.md",
-  "AutoLaris-H2H-API.md",
-  "AutoLaris-Payment-Gateway-API.md",
-  "INTEGRATION-GUIDE.md",
+  "docs/reference/h2h-api.md",
+  "docs/guides/payment-gateway.md",
+  "docs/guides/integration.md",
 ];
-const textFiles = [...markdownFiles, "openapi.json"];
+const openapiFile = "openapi/autolaris-h2h.openapi.json";
+const textFiles = [...markdownFiles, openapiFile];
 
 const contents = new Map(
   await Promise.all(
@@ -39,9 +40,9 @@ const markdownAnchors = (content) =>
 
 let spec;
 try {
-  spec = JSON.parse(contents.get("openapi.json"));
+  spec = JSON.parse(contents.get(openapiFile));
 } catch (error) {
-  failures.push(`openapi.json is not valid JSON: ${error.message}`);
+  failures.push(`${openapiFile} is not valid JSON: ${error.message}`);
 }
 
 const endpoints = [
@@ -56,7 +57,7 @@ const endpoints = [
 ];
 
 if (spec) {
-  check(spec.openapi === "3.1.0", "openapi.json must use OpenAPI 3.1.0");
+  check(spec.openapi === "3.1.0", `${openapiFile} must use OpenAPI 3.1.0`);
   check(
     spec.servers?.[0]?.url === "https://api-h2h.autolaris.com",
     "OpenAPI server URL is missing or incorrect",
@@ -139,7 +140,7 @@ for (const file of markdownFiles) {
   }
 }
 
-for (const file of ["README.md", "AutoLaris-H2H-API.md"]) {
+for (const file of ["README.md", "docs/reference/h2h-api.md"]) {
   const content = contents.get(file);
   for (const [method, path] of endpoints) {
     check(
@@ -159,17 +160,17 @@ check(
   "Documentation still claims that a payment-channel endpoint is unavailable",
 );
 check(
-  contents.get("INTEGRATION-GUIDE.md").includes("payload.rc !== \"00\""),
+  contents.get("docs/guides/integration.md").includes("payload.rc !== \"00\""),
   "Integration client must reject logical errors (rc !== 00)",
 );
 check(
-  contents.get("AutoLaris-Payment-Gateway-API.md").includes(
+  contents.get("docs/guides/payment-gateway.md").includes(
     "tidak mengubah status order",
   ),
   "Callback discovery guidance must forbid unverified status updates",
 );
 check(
-  contents.get("AutoLaris-Payment-Gateway-API.md").includes(
+  contents.get("docs/guides/payment-gateway.md").includes(
     "DELIVERED` adalah status pengiriman",
   ),
   "Payment guide must keep DELIVERED out of paid settlement",

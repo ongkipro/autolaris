@@ -338,14 +338,43 @@ $channels = autolaris('/api/h2h/list_payment', null, 'GET');
 ## 8. Profil Create Order payment-only
 
 Untuk produk digital, subscription, atau pembayaran non-fisik, akun yang telah
-menyetujui klasifikasi AutoLaris dapat memakai `/submit` dengan:
+menyetujui klasifikasi AutoLaris dapat memakai `/submit` dengan payload lengkap
+berikut. Ganti semua data contoh dengan data order lokal yang sudah tervalidasi;
+`reff_id` harus stabil dan dipersist sebelum request agar retry tidak mencetak
+tagihan kedua.
 
 ```json
 {
+  "reff_id": "1000001",
   "channel_code": "QRIS",
   "courir_id": 1,
+  "origin": 3517100,
+  "destination": 3518010,
+  "weight": "1000",
+  "length": "1",
+  "width": "1",
+  "height": "1",
+  "shipper_name": "Merchant Name",
+  "shipper_phone": "6281234567890",
+  "shipper_email": "merchant@example.com",
+  "shipper_address": "Merchant address",
+  "receiver_name": "Customer Name",
+  "receiver_phone": "6281234567890",
+  "receiver_email": "customer@example.com",
+  "receiver_address": "Customer address",
+  "callback_url": "",
+  "grand_total": "10000",
   "cod_value": "0",
-  "callback_url": ""
+  "longitude": "",
+  "latitude": "",
+  "remark": "1000001",
+  "order_details": [
+    {
+      "name": "Digital product or subscription",
+      "qty": "1",
+      "unit_price": "10000"
+    }
+  ]
 }
 ```
 
@@ -354,10 +383,14 @@ dimensi, dan `order_details`. Field tersebut adalah metadata schema, bukan
 instruksi shipment pada profil ini. Jangan membuat AWB, pickup, atau dispatch.
 Jangan memanggil `/create_payment` untuk checkout yang sudah berhasil `/submit`.
 
+`remark` memakai `reff_id`/nomor order lokal, bukan `provider_transaction_id`:
+ID provider baru tersedia **setelah** `/submit` berhasil dan harus disimpan dari
+response untuk Advice.
+
 `courir_id: 1` merupakan kontrak operasional akun, bukan jaminan publik Postman.
 
 Untuk produk fisik, gunakan `courir_id` hasil `/ongkir` dan ikuti `/order` atau
-`/submit` terpadu sesuai [referensi H2H](./AutoLaris-H2H-API.md).
+`/submit` terpadu sesuai [referensi H2H](../reference/h2h-api.md).
 
 ## 9. Advice pada scheduled job
 

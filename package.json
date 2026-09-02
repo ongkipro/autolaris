@@ -1,5 +1,6 @@
 {
-  "name": "autolaris-h2h-api-docs",
+  "name": "autolaris-h2h-integration-reference",
+  "description": "Independent AutoLaris H2H API integration reference and OpenAPI contract.",
   "version": "1.0.0",
   "private": true,
   "type": "module",

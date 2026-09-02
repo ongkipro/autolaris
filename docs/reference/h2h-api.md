@@ -2,7 +2,7 @@
 
 Referensi ini mengikuti koleksi Postman AutoLaris `latest` yang diperiksa pada 2026-09-02. Nama field seperti `reff_id` dan `courir_id` mempertahankan ejaan API.
 
-Untuk contoh Astro, Next.js, Node.js, Cloudflare Workers, dan PHP, lihat [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md).
+Untuk contoh Astro, Next.js, Node.js, Cloudflare Workers, dan PHP, lihat [integration guide](../guides/integration.md).
 
 ## Informasi umum
 
@@ -14,7 +14,7 @@ Untuk contoh Astro, Next.js, Node.js, Cloudflare Workers, dan PHP, lihat [INTEGR
 | Response format | `{ "rc": "00", "ket": "...", "data": ... }` |
 | Production | API Key production dan whitelist maksimal 5 IP |
 
-API Key diperoleh melalui [dashboard seller](https://seller.autolaris.com). Working tree hanya memakai placeholder; lihat [catatan credential dan rotasi](./README.md#sumber) sebelum menggunakan key development dari sumber mana pun.
+API Key diperoleh melalui [dashboard seller](https://seller.autolaris.com). Working tree hanya memakai placeholder; gunakan credential milik sendiri dan segera rotasi key yang pernah terekspos.
 
 ```http
 Authorization: Bearer <API_KEY>
@@ -362,7 +362,7 @@ Gunakan field instruksi yang terisi:
 - redirect/e-wallet: `url` dan/atau `payment_code`;
 - nominal pelanggan: `total`, bukan `amount`.
 
-Detail payment dan caveat callback: [AutoLaris-Payment-Gateway-API.md](./AutoLaris-Payment-Gateway-API.md).
+Detail payment dan caveat callback: [payment gateway guide](../guides/payment-gateway.md).
 
 ---
 
@@ -613,4 +613,4 @@ Konfirmasikan bagian tersebut kepada AutoLaris sebelum go-live.
 - [Koleksi Postman AutoLaris H2H](https://documenter.getpostman.com/view/25938923/2sB2iwFuwz)
 - [Dashboard seller](https://seller.autolaris.com)
 - [Data area](https://docs.google.com/spreadsheets/d/130zcs6uHmEtHuPc-WFx0BjlVjo7Ag6WmeUGiYozvRAk/edit?usp=sharing)
-- [OpenAPI snapshot repository](./openapi.json)
+- [OpenAPI snapshot repository](../../openapi/autolaris-h2h.openapi.json)

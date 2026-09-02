@@ -1,49 +1,97 @@
-# AutoLaris H2H API
+# AutoLaris H2H Integration Reference
 
-Dokumentasi integrasi AutoLaris untuk ongkir, pengiriman, tracking, payment gateway, dan order terpadu.
+[![Documentation validation](https://img.shields.io/badge/docs-validated-1f883d?logo=markdown&logoColor=white)](#validation)
+[![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1.0-6BA539?logo=openapiinitiative&logoColor=white)](./openapi/autolaris-h2h.openapi.json)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-> Snapshot kontrak: koleksi Postman AutoLaris `latest`, diperiksa 2026-09-02. API dapat berubah tanpa versioned path; jalankan smoke test dengan credential development sebelum go-live.
+An independent, implementation-focused reference for the AutoLaris H2H API.
+It documents shipping, tracking, payment channels, Create Order, and Advice for
+server-side integrations. This repository is **not affiliated with AutoLaris**;
+the provider's published Postman collection remains the upstream contract.
 
-## Mulai di sini
+> **Contract snapshot:** AutoLaris Postman collection `latest`, reviewed on
+> 2026-09-02. The API has no versioned path. Re-test the workflow with a
+> development credential before every production rollout.
 
-1. Minta API Key melalui [dashboard seller](https://seller.autolaris.com). Akses production membutuhkan whitelist maksimal 5 IP.
-2. Simpan key hanya di server sebagai `AUTOLARIS_API_KEY`. Jangan kirim key ke browser atau commit ke repository.
-3. Pilih panduan:
+## What this repository provides
 
-| Kebutuhan | Dokumen |
+- A complete endpoint map for the eight published H2H operations.
+- Verified request examples and an [OpenAPI 3.1 specification](./openapi/autolaris-h2h.openapi.json).
+- A payment-only/digital profile using Create Order `/submit` where the merchant
+  account explicitly supports `courir_id: 1` as non-physical.
+- Safe Advice reconciliation guidance: an HTTP success alone is never proof of
+  settlement.
+- Copy-ready server-side examples for Astro, Next.js, Node.js, Cloudflare
+  Workers, and PHP.
+
+It does **not** provide AutoLaris credentials, an SDK, callback signatures, or
+an invented mapping for undocumented provider statuses.
+
+## Start here
+
+1. Obtain an API key from the [AutoLaris Seller Dashboard](https://seller.autolaris.com).
+2. Store it only in a server-side secret manager as `AUTOLARIS_API_KEY`; never
+   expose it in browser code or commit it to Git.
+3. Select the document that matches the job:
+
+| Need | Read |
 |---|---|
-| Referensi 8 endpoint dan payload | [AutoLaris-H2H-API.md](./AutoLaris-H2H-API.md) |
-| Payment, channel, callback, rekonsiliasi | [AutoLaris-Payment-Gateway-API.md](./AutoLaris-Payment-Gateway-API.md) |
-| Copy-paste Astro, Next.js, Node.js, Cloudflare Workers, PHP | [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md) |
-| Kontrak machine-readable | [openapi.json](./openapi.json) |
+| Endpoint reference, fields, and response examples | [H2H API reference](./docs/reference/h2h-api.md) |
+| Payment channels, QRIS/VA, Create Order, and Advice | [Payment gateway guide](./docs/guides/payment-gateway.md) |
+| Framework implementation and retry/reconciliation patterns | [Integration guide](./docs/guides/integration.md) |
+| Machine-readable API contract | [OpenAPI 3.1](./openapi/autolaris-h2h.openapi.json) |
 
-## Endpoint
+## API surface
 
-Base URL: `https://api-h2h.autolaris.com`
+**Base URL:** `https://api-h2h.autolaris.com`
 
-| Service | Method | Path | Fungsi |
+| Operation | Method | Path | Use |
 |---|---:|---|---|
-| Cek Ongkir | `POST` | `/api/h2h/ongkir` | Daftar layanan, tarif, dan `courir_id` |
-| Create Resi | `POST` | `/api/h2h/order` | Membuat resi reguler atau COD |
-| Tracking | `POST` | `/api/h2h/lacak` | Status dan histori berdasarkan `awb` |
-| Cancel Resi | `POST` | `/api/h2h/cancel` | Membatalkan resi berdasarkan `transaction_id` |
-| Create Payment | `POST` | `/api/h2h/create_payment` | Membuat tagihan VA, QRIS, atau e-wallet |
-| List Payment Channel | `GET` | `/api/h2h/list_payment` | Channel aktif dan biaya admin akun |
-| Create Order | `POST` | `/api/h2h/submit` | Membuat order, pengiriman, dan payment sekaligus |
-| Advice | `POST` | `/api/h2h/advice` | Membaca status transaksi dari `transaction_id` |
+| Cek Ongkir | `POST` | `/api/h2h/ongkir` | Get eligible services, prices, and `courir_id` |
+| Create Resi | `POST` | `/api/h2h/order` | Create a shipping waybill, regular or COD |
+| Tracking | `POST` | `/api/h2h/lacak` | Read status and history by `awb` |
+| Cancel Resi | `POST` | `/api/h2h/cancel` | Cancel using provider `transaction_id` |
+| Create Payment | `POST` | `/api/h2h/create_payment` | Create a VA, QRIS, or e-wallet instruction |
+| List Payment Channel | `GET` | `/api/h2h/list_payment` | Read channels and account-specific fees |
+| Create Order | `POST` | `/api/h2h/submit` | Create order, shipment data, and payment instruction |
+| Advice | `POST` | `/api/h2h/advice` | Read a transaction by provider `transaction_id` |
 
-Semua endpoint memakai:
+All requests use a server-side Bearer token:
 
 ```http
 Authorization: Bearer <API_KEY>
 Content-Type: application/json
 ```
 
-`Content-Type` tidak diperlukan untuk `GET /api/h2h/list_payment`.
+`Content-Type` is not needed for `GET /api/h2h/list_payment`.
 
-## Quick start
+## Choose the correct flow
 
-Cek channel yang aktif untuk akun:
+| Use case | Required flow | Do not do |
+|---|---|---|
+| Physical shipping | `/ongkir` → `/order`, then `/lacak` | Hardcode a shipping `courir_id` |
+| Physical shipping with payment | `/ongkir` → `/submit` | Treat shipment terms as payment settlement |
+| Digital, subscription, or non-physical payment | `/list_payment` → `/submit` → `/advice` | Call `/create_payment` after the same `/submit` checkout |
+| Payment instruction only | `/list_payment` → `/create_payment` → provider-confirmed reconciliation | Assume generic callback/status wording means paid |
+
+### Payment-only / digital profile
+
+For a merchant account that has explicitly agreed to classify `courir_id: 1` as
+digital/non-physical, Create Order `/submit` can carry a payment-only purchase.
+The required origin, destination, address, and dimensions remain schema metadata;
+they do not request an AWB, pickup, courier booking, or dispatch in this profile.
+
+Use `cod_value: "0"` for prepaid QRIS/VA. Persist the local `reff_id` before the
+request, call `/submit` once per checkout, save the returned `transaction_id`,
+and reconcile it through `/advice`. See the [complete JSON example](./docs/guides/integration.md#8-profil-create-order-payment-only).
+
+`courir_id: 1` is a **kontrak operasional akun** (an account-specific operational
+agreement), not a global guarantee from the public Postman collection. Confirm
+it with AutoLaris before using it on another account.
+
+## Quick checks
+
+List the payment channels enabled for the account:
 
 ```bash
 curl --fail-with-body \
@@ -51,25 +99,19 @@ curl --fail-with-body \
   "https://api-h2h.autolaris.com/api/h2h/list_payment"
 ```
 
-Cek ongkir:
+Read a payment/order transaction without creating a second transaction:
 
 ```bash
 curl --fail-with-body \
   -X POST \
   -H "Authorization: Bearer $AUTOLARIS_API_KEY" \
   -H "Content-Type: application/json" \
-  "https://api-h2h.autolaris.com/api/h2h/ongkir" \
-  --data '{
-    "origin": 3515140,
-    "destination": 3173060,
-    "weight": "1000",
-    "length": "10",
-    "width": "20",
-    "height": "30"
-  }'
+  "https://api-h2h.autolaris.com/api/h2h/advice" \
+  --data '{"transaction_id":"<PROVIDER_TRANSACTION_ID>"}'
 ```
 
-Response sukses tetap harus diperiksa pada level payload:
+Every response must pass both checks below. HTTP `200` only confirms transport;
+process `data` only when the provider envelope has `rc === "00"`.
 
 ```json
 {
@@ -79,102 +121,61 @@ Response sukses tetap harus diperiksa pada level payload:
 }
 ```
 
-HTTP `200` tidak selalu berarti operasi berhasil. Proses `data` hanya jika `rc === "00"`.
+## Payment reconciliation safety
 
-## Profil integrasi
+Advice is a read operation. A scheduler should load only local pending
+transactions with a saved provider `transaction_id`, use bounded/idempotent
+updates, and isolate failures per transaction.
 
-### Payment-only / produk digital
+- `02/PENDING` stays pending.
+- `DELIVERED` is shipping vocabulary, not proof of payment.
+- `SUCCESS` and `BERHASIL` are generic wording, not a settlement mapping.
+- Move a payment to paid only for a provider-confirmed final settlement status.
+- A paid transition must not automatically dispatch a physical shipment.
 
-Implementasi merchant seperti ZvaraShop memakai **Create Order** `/submit`, bukan
-`/create_payment`, agar transaksi tampil sebagai pembelian produk digital,
-subscription, atau pembayaran non-fisik di sistem AutoLaris. Konvensinya:
+The complete, provider-published settlement mapping and callback contract remain
+undocumented. Keep manual reconciliation available for unproven states.
 
-- `courir_id: 1` adalah klasifikasi non-fisik yang disepakati untuk akun;
-- `cod_value: "0"` untuk QRIS/VA;
-- origin, destination, shipper, receiver, dan dimensi tetap dikirim karena schema
-  `/submit` mewajibkannya, tetapi bukan instruksi shipment;
-- flow ini tidak membuat AWB, pickup, booking courier, atau dispatch;
-- satu checkout memanggil `/submit` sekali dan tidak memanggil `/create_payment`
-  untuk referensi yang sama;
-- cron memeriksa `transaction_id` melalui `/advice`.
+## Repository layout
 
-`courir_id: 1` sebagai klasifikasi non-fisik adalah kontrak operasional akun,
-bukan jaminan umum dari koleksi Postman. Konfirmasikan pada AutoLaris untuk akun
-lain sebelum production.
-
-### Produk fisik
-
-### Pengiriman terpisah
-
-```mermaid
-sequenceDiagram
-    participant App as Partner server
-    participant API as AutoLaris
-    App->>API: POST /ongkir
-    API-->>App: service_detail[] + courir_id
-    App->>API: POST /order
-    API-->>App: awb + transaction_id
-    App->>API: POST /lacak
-    API-->>App: stats + histories[]
-    opt Batalkan
-        App->>API: POST /cancel
-    end
+```text
+.
+├── docs/
+│   ├── guides/                       # Payment and framework implementation guides
+│   └── reference/                    # Endpoint-by-endpoint H2H reference
+├── openapi/                          # Machine-readable API contract
+├── scripts/validate-docs.mjs         # Documentation consistency checks
+├── CONTRIBUTING.md                   # Documentation contribution rules
+└── SECURITY.md                       # Vulnerability disclosure guidance
 ```
-
-### Order terpadu
-
-`POST /api/h2h/submit` menggabungkan data order, pengiriman, dan `channel_code`. Response dapat berisi biaya, pickup, buyer, dan instruksi payment (`va`, `qr`, atau `url`). Gunakan endpoint ini bila alur bisnis memang membutuhkan satu transaksi terpadu; jangan panggil `create_payment` lagi untuk order yang sama tanpa rekonsiliasi.
-
-Untuk produk fisik, ambil `courir_id` dari `/ongkir`; jangan hardcode nilai `1`.
-Flow fisik mengikuti Postman: `/ongkir` → `/order` untuk shipping-only, atau
-`/ongkir` → `/submit` untuk order + shipping + payment terpadu.
-
-### Rekonsiliasi payment
-
-Cron memanggil `POST /api/h2h/advice` dengan `transaction_id` yang diterbitkan
-AutoLaris. `02/PENDING` tidak mengubah status. Status `DELIVERED` adalah
-vocabulary pengiriman dan **bukan bukti pembayaran lunas**; simpan sebagai
-status tidak terverifikasi sampai AutoLaris memberi settlement mapping resmi.
-
-## Integrasi framework
-
-| Stack | Lokasi aman untuk API Key | Pola yang disarankan |
-|---|---|---|
-| Astro | `import.meta.env.AUTOLARIS_API_KEY` pada server | Server endpoint dengan `prerender = false` |
-| Next.js App Router | `process.env.AUTOLARIS_API_KEY` | Route Handler atau Server Action |
-| Node.js | Environment process | Modul server menggunakan native `fetch` |
-| Cloudflare Workers | Secret binding | Worker `fetch()` langsung ke AutoLaris |
-| PHP/Laravel | Environment / secret manager | Server-side cURL atau HTTP client |
-
-Jangan memanggil AutoLaris langsung dari Client Component, browser script, atau public Astro island. Detail copy-paste ada di [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md).
-
-## Batas kontrak yang belum dipublikasikan
-
-Koleksi sumber belum mendefinisikan:
-
-- payload, signature, retry policy, dan source IP callback;
-- mapping status Advice yang resmi dan lengkap, termasuk status settlement final;
-- timezone resmi field `expired`;
-- aturan idempotensi lengkap untuk `create_payment` dan `submit`;
-- daftar seluruh error code.
-
-Karena itu, contoh callback di repository ini tidak mengasumsikan transaksi `PAID`. Konfirmasikan kontrak callback ke AutoLaris sebelum production.
 
 ## Sumber
 
-- [Koleksi Postman AutoLaris H2H](https://documenter.getpostman.com/view/25938923/2sB2iwFuwz)
-- [Dashboard seller](https://seller.autolaris.com)
-- [Pendaftaran akun](https://seller.autolaris.com/daftar)
-- [Data area origin/destination](https://docs.google.com/spreadsheets/d/130zcs6uHmEtHuPc-WFx0BjlVjo7Ag6WmeUGiYozvRAk/edit?usp=sharing)
+The [public AutoLaris Postman collection](https://documenter.getpostman.com/view/25938923/2sB2iwFuwz)
+is the source for published endpoints and examples. This repository clearly
+labels account-specific conventions and unresolved provider behavior.
 
-Working tree saat ini hanya menyimpan placeholder `<API_KEY>`. Namun, development credential pernah ter-commit dan masih dapat dipulihkan dari riwayat Git. Anggap credential tersebut compromised dan lakukan rotasi melalui AutoLaris. Penghapusan dari file terbaru tidak mencabut key; pembersihan history membutuhkan coordinated history rewrite dan force-push, sehingga tidak dilakukan oleh pembaruan dokumentasi ini.
+Before a production integration, confirm with AutoLaris:
 
-## Validasi repository
+- callback payload, signature, retries, and allowed source IPs;
+- final Advice settlement statuses and codes;
+- timezone of `expired` values;
+- idempotency behavior for `/create_payment` and `/submit`;
+- complete provider error code catalog.
+
+## Validation
+
+This repository uses Node.js built-ins only. Run the consistency checks after
+changing Markdown or OpenAPI content:
 
 ```bash
 npm test
 ```
 
-Command tersebut memakai Node.js bawaan, tanpa dependency tambahan, untuk memeriksa OpenAPI, endpoint matrix, local links, code fences, dan accidental token leakage.
+The validator checks JSON syntax, OpenAPI references, endpoint coverage, local
+links and anchors, code-fence balance, and likely credential leakage.
 
-Lisensi: [MIT](./LICENSE).
+## License
+
+Released under the [MIT License](./LICENSE). AutoLaris and related marks belong
+to their respective owners.
