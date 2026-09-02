@@ -52,6 +52,7 @@ const endpoints = [
   ["post", "/api/h2h/create_payment"],
   ["get", "/api/h2h/list_payment"],
   ["post", "/api/h2h/submit"],
+  ["post", "/api/h2h/advice"],
 ];
 
 if (spec) {
@@ -166,6 +167,17 @@ check(
     "tidak mengubah status order",
   ),
   "Callback discovery guidance must forbid unverified status updates",
+);
+check(
+  contents.get("AutoLaris-Payment-Gateway-API.md").includes(
+    "DELIVERED` adalah status pengiriman",
+  ),
+  "Payment guide must keep DELIVERED out of paid settlement",
+);
+check(
+  contents.get("README.md").includes("courir_id: 1") &&
+    contents.get("README.md").includes("kontrak operasional akun"),
+  "README must label the non-physical courier id as an account contract",
 );
 
 if (failures.length > 0) {

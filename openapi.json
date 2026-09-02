@@ -3,8 +3,8 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "AutoLaris H2H API",
-    "version": "2026-08-18",
-    "description": "Repository snapshot of the public AutoLaris Postman collection. Field requiredness is derived from published request examples because a formal required/optional matrix is not available. Confirm callback, idempotency, rate-limit, and timezone contracts before production."
+    "version": "2026-09-02",
+    "description": "Repository snapshot of the public AutoLaris Postman collection plus a clearly labeled merchant-specific non-physical /submit profile. Field requiredness is derived from published examples. Confirm callback, settlement-status, idempotency, rate-limit, and timezone contracts before production."
   },
   "externalDocs": {
     "description": "AutoLaris public Postman documentation",
@@ -189,7 +189,7 @@
       "post": {
         "operationId": "createOrder",
         "summary": "Create order",
-        "description": "Creates an order with shipping and payment in one flow. The stored public response does not include an awb.",
+        "description": "Creates an order and payment instruction. Public Postman documents physical shipping. A merchant-specific profile may classify courir_id 1 as digital/non-physical; this must be confirmed per account and creates no shipment.",
         "tags": ["Order"],
         "requestBody": {
           "required": true,
@@ -202,6 +202,34 @@
         "responses": {
           "200": {
             "description": "Returns transaction, fee, pickup, buyer, and payment information when rc is 00",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" }
+              }
+            }
+          },
+          "default": { "$ref": "#/components/responses/ErrorResponse" }
+        }
+      }
+    },
+    "/api/h2h/advice": {
+      "post": {
+        "operationId": "getTransactionAdvice",
+        "summary": "Advice transaction status",
+        "description": "Reads status by provider transaction_id. The public collection does not publish a complete settlement mapping. PENDING and shipping vocabulary such as DELIVERED must not be treated as paid.",
+        "tags": ["Payment"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdviceRequest" },
+              "example": { "transaction_id": "986770" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provider envelope; 02/PENDING has been observed for an unpaid transaction",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiResponse" }
@@ -332,6 +360,17 @@
         "required": ["transaction_id"],
         "properties": {
           "transaction_id": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "AdviceRequest": {
+        "type": "object",
+        "required": ["transaction_id"],
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "description": "Provider-issued transaction identifier, not the partner reff_id"
+          }
         },
         "additionalProperties": false
       },

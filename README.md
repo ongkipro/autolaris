@@ -2,7 +2,7 @@
 
 Dokumentasi integrasi AutoLaris untuk ongkir, pengiriman, tracking, payment gateway, dan order terpadu.
 
-> Snapshot kontrak: koleksi Postman AutoLaris `latest`, diperiksa 2026-08-18. API dapat berubah tanpa versioned path; jalankan smoke test dengan credential development sebelum go-live.
+> Snapshot kontrak: koleksi Postman AutoLaris `latest`, diperiksa 2026-09-02. API dapat berubah tanpa versioned path; jalankan smoke test dengan credential development sebelum go-live.
 
 ## Mulai di sini
 
@@ -12,7 +12,7 @@ Dokumentasi integrasi AutoLaris untuk ongkir, pengiriman, tracking, payment gate
 
 | Kebutuhan | Dokumen |
 |---|---|
-| Referensi 7 endpoint dan payload | [AutoLaris-H2H-API.md](./AutoLaris-H2H-API.md) |
+| Referensi 8 endpoint dan payload | [AutoLaris-H2H-API.md](./AutoLaris-H2H-API.md) |
 | Payment, channel, callback, rekonsiliasi | [AutoLaris-Payment-Gateway-API.md](./AutoLaris-Payment-Gateway-API.md) |
 | Copy-paste Astro, Next.js, Node.js, Cloudflare Workers, PHP | [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md) |
 | Kontrak machine-readable | [openapi.json](./openapi.json) |
@@ -30,6 +30,7 @@ Base URL: `https://api-h2h.autolaris.com`
 | Create Payment | `POST` | `/api/h2h/create_payment` | Membuat tagihan VA, QRIS, atau e-wallet |
 | List Payment Channel | `GET` | `/api/h2h/list_payment` | Channel aktif dan biaya admin akun |
 | Create Order | `POST` | `/api/h2h/submit` | Membuat order, pengiriman, dan payment sekaligus |
+| Advice | `POST` | `/api/h2h/advice` | Membaca status transaksi dari `transaction_id` |
 
 Semua endpoint memakai:
 
@@ -80,7 +81,28 @@ Response sukses tetap harus diperiksa pada level payload:
 
 HTTP `200` tidak selalu berarti operasi berhasil. Proses `data` hanya jika `rc === "00"`.
 
-## Alur yang tersedia
+## Profil integrasi
+
+### Payment-only / produk digital
+
+Implementasi merchant seperti ZvaraShop memakai **Create Order** `/submit`, bukan
+`/create_payment`, agar transaksi tampil sebagai pembelian produk digital,
+subscription, atau pembayaran non-fisik di sistem AutoLaris. Konvensinya:
+
+- `courir_id: 1` adalah klasifikasi non-fisik yang disepakati untuk akun;
+- `cod_value: "0"` untuk QRIS/VA;
+- origin, destination, shipper, receiver, dan dimensi tetap dikirim karena schema
+  `/submit` mewajibkannya, tetapi bukan instruksi shipment;
+- flow ini tidak membuat AWB, pickup, booking courier, atau dispatch;
+- satu checkout memanggil `/submit` sekali dan tidak memanggil `/create_payment`
+  untuk referensi yang sama;
+- cron memeriksa `transaction_id` melalui `/advice`.
+
+`courir_id: 1` sebagai klasifikasi non-fisik adalah kontrak operasional akun,
+bukan jaminan umum dari koleksi Postman. Konfirmasikan pada AutoLaris untuk akun
+lain sebelum production.
+
+### Produk fisik
 
 ### Pengiriman terpisah
 
@@ -103,6 +125,17 @@ sequenceDiagram
 
 `POST /api/h2h/submit` menggabungkan data order, pengiriman, dan `channel_code`. Response dapat berisi biaya, pickup, buyer, dan instruksi payment (`va`, `qr`, atau `url`). Gunakan endpoint ini bila alur bisnis memang membutuhkan satu transaksi terpadu; jangan panggil `create_payment` lagi untuk order yang sama tanpa rekonsiliasi.
 
+Untuk produk fisik, ambil `courir_id` dari `/ongkir`; jangan hardcode nilai `1`.
+Flow fisik mengikuti Postman: `/ongkir` → `/order` untuk shipping-only, atau
+`/ongkir` → `/submit` untuk order + shipping + payment terpadu.
+
+### Rekonsiliasi payment
+
+Cron memanggil `POST /api/h2h/advice` dengan `transaction_id` yang diterbitkan
+AutoLaris. `02/PENDING` tidak mengubah status. Status `DELIVERED` adalah
+vocabulary pengiriman dan **bukan bukti pembayaran lunas**; simpan sebagai
+status tidak terverifikasi sampai AutoLaris memberi settlement mapping resmi.
+
 ## Integrasi framework
 
 | Stack | Lokasi aman untuk API Key | Pola yang disarankan |
@@ -120,7 +153,7 @@ Jangan memanggil AutoLaris langsung dari Client Component, browser script, atau 
 Koleksi sumber belum mendefinisikan:
 
 - payload, signature, retry policy, dan source IP callback;
-- endpoint inquiry status payment;
+- mapping status Advice yang resmi dan lengkap, termasuk status settlement final;
 - timezone resmi field `expired`;
 - aturan idempotensi lengkap untuk `create_payment` dan `submit`;
 - daftar seluruh error code.

@@ -45,10 +45,10 @@ export function createAutoLarisClient(
 ) {
   if (!apiKey) throw new Error("AUTOLARIS_API_KEY is not configured");
 
-  async function request<T>(
+  async function requestEnvelope<T>(
     path: string,
     options: { method?: "GET" | "POST"; body?: unknown } = {},
-  ): Promise<T> {
+  ): Promise<ApiEnvelope<T>> {
     const method = options.method ?? "POST";
     const response = await fetcher(`${BASE_URL}${path}`, {
       method,
@@ -74,7 +74,7 @@ export function createAutoLarisClient(
       );
     }
 
-    if (!response.ok || payload.rc !== "00") {
+    if (!response.ok) {
       throw new AutoLarisError(
         payload.ket || `AutoLaris request failed (${response.status})`,
         response.status,
@@ -82,6 +82,17 @@ export function createAutoLarisClient(
       );
     }
 
+    return payload;
+  }
+
+  async function request<T>(
+    path: string,
+    options: { method?: "GET" | "POST"; body?: unknown } = {},
+  ): Promise<T> {
+    const payload = await requestEnvelope<T>(path, options);
+    if (payload.rc !== "00") {
+      throw new AutoLarisError(payload.ket, 200, payload.rc);
+    }
     return payload.data;
   }
 
@@ -100,6 +111,10 @@ export function createAutoLarisClient(
       request<T>("/api/h2h/list_payment", { method: "GET" }),
     createOrder: <T>(body: unknown) =>
       request<T>("/api/h2h/submit", { body }),
+    advice: (transactionId: string) =>
+      requestEnvelope<{ awb?: string }>("/api/h2h/advice", {
+        body: { transaction_id: transactionId },
+      }),
   };
 }
 ```
@@ -320,7 +335,55 @@ function autolaris(string $path, ?array $body = null, string $method = 'POST'): 
 $channels = autolaris('/api/h2h/list_payment', null, 'GET');
 ```
 
-## 8. Retry dan idempotensi
+## 8. Profil Create Order payment-only
+
+Untuk produk digital, subscription, atau pembayaran non-fisik, akun yang telah
+menyetujui klasifikasi AutoLaris dapat memakai `/submit` dengan:
+
+```json
+{
+  "channel_code": "QRIS",
+  "courir_id": 1,
+  "cod_value": "0",
+  "callback_url": ""
+}
+```
+
+Tetap kirim field required `/submit`, termasuk `origin`, `destination`, identitas,
+dimensi, dan `order_details`. Field tersebut adalah metadata schema, bukan
+instruksi shipment pada profil ini. Jangan membuat AWB, pickup, atau dispatch.
+Jangan memanggil `/create_payment` untuk checkout yang sudah berhasil `/submit`.
+
+`courir_id: 1` merupakan kontrak operasional akun, bukan jaminan publik Postman.
+
+Untuk produk fisik, gunakan `courir_id` hasil `/ongkir` dan ikuti `/order` atau
+`/submit` terpadu sesuai [referensi H2H](./AutoLaris-H2H-API.md).
+
+## 9. Advice pada scheduled job
+
+```ts
+const result = await autolaris.advice(providerTransactionId);
+
+if (result.rc === "02" && result.ket.toUpperCase() === "PENDING") {
+  // no-op
+} else if (
+  result.rc === "00" &&
+  ["PAID", "SETTLED", "LUNAS"].includes(
+    result.ket.toUpperCase(),
+  )
+) {
+  // guarded, idempotent local paid transition
+} else {
+  // unproven: log safely and require manual/provider confirmation
+}
+```
+
+`SUCCESS`, `BERHASIL`, dan `DELIVERED` sengaja tidak ada pada daftar paid:
+dua nilai pertama terlalu generik, sedangkan `DELIVERED` adalah vocabulary
+pengiriman. Batasi batch cron, isolasi error per transaksi, dan jangan jadikan
+perubahan payment sebagai trigger pengiriman otomatis.
+
+## 10. Retry dan idempotensi
 
 Gunakan prinsip berikut untuk endpoint yang membuat transaksi (`order`, `create_payment`, `submit`):
 
@@ -328,11 +391,11 @@ Gunakan prinsip berikut untuk endpoint yang membuat transaksi (`order`, `create_
 2. simpan state lokal `creating`;
 3. jika response sukses, simpan `transaction_id`, `trx_id`, atau `awb` pada transaksi yang sama;
 4. jika timeout/5xx, jangan otomatis membuat `reff_id` baru;
-5. rekonsiliasi dengan AutoLaris sebelum retry karena endpoint inquiry payment belum dipublikasikan.
+5. rekonsiliasi melalui `/advice` dengan provider transaction ID sebelum retry.
 
 `reff_id` pada Create Resi didokumentasikan maksimal 30 digit dan tidak boleh sama pada hari yang sama. Aturan yang sama belum dipublikasikan secara eksplisit untuk Create Payment dan Create Order.
 
-## 9. Callback
+## 11. Callback
 
 Kontrak callback AutoLaris belum memuat payload, signature, retry policy, atau source IP pada koleksi publik. Karena itu:
 
@@ -344,12 +407,14 @@ Kontrak callback AutoLaris belum memuat payload, signature, retry policy, atau s
 
 Sebelum production, minta AutoLaris memberi contoh callback nyata, daftar status final, aturan retry, dan cara verifikasi keaslian.
 
-## 10. Checklist smoke test
+## 12. Checklist smoke test
 
 - [ ] `GET /list_payment` mengembalikan `rc = "00"` dan channel akun.
 - [ ] `POST /ongkir` mengembalikan minimal satu `service_detail` untuk area uji.
 - [ ] `courir_id` dari ongkir diteruskan tanpa mapping manual yang stale.
 - [ ] `reff_id`, `awb`, `transaction_id`, dan `trx_id` tersimpan sesuai flow.
 - [ ] Logical error `rc !== "00"` tidak diproses sebagai sukses.
+- [ ] `/advice` dipanggil dengan provider transaction ID, bukan `reff_id` lokal.
+- [ ] `PENDING` dan `DELIVERED` tidak mengubah pembayaran menjadi paid.
 - [ ] API Key tidak muncul pada browser bundle, response, atau log.
 - [ ] Callback contract telah dikonfirmasi sebelum mengaktifkan status payment otomatis.

@@ -1,6 +1,6 @@
 # AutoLaris H2H API — Referensi Endpoint
 
-Referensi ini mengikuti koleksi Postman AutoLaris `latest` yang diperiksa pada 2026-08-18. Nama field seperti `reff_id` dan `courir_id` mempertahankan ejaan API.
+Referensi ini mengikuti koleksi Postman AutoLaris `latest` yang diperiksa pada 2026-09-02. Nama field seperti `reff_id` dan `courir_id` mempertahankan ejaan API.
 
 Untuk contoh Astro, Next.js, Node.js, Cloudflare Workers, dan PHP, lihat [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md).
 
@@ -42,6 +42,7 @@ if (!response.ok || payload.rc !== "00") {
 | 5 | [Create Payment](#5-create-payment) | `POST` | `/api/h2h/create_payment` |
 | 6 | [List Payment Channel](#6-list-payment-channel) | `GET` | `/api/h2h/list_payment` |
 | 7 | [Create Order](#7-create-order) | `POST` | `/api/h2h/submit` |
+| 8 | [Advice](#8-advice) | `POST` | `/api/h2h/advice` |
 
 ## Pilih flow yang tepat
 
@@ -49,7 +50,8 @@ if (!response.ok || payload.rc !== "00") {
 |---|---|
 | Tarif saja | `ongkir` |
 | Pengiriman terpisah dari payment | `ongkir` → `order` → `lacak` / `cancel` |
-| Tagihan payment saja | `list_payment` → `create_payment` |
+| Payment-only sebagai produk digital/subscription | `list_payment` → `submit` (`courir_id: 1`, kontrak operasional akun) → `advice` |
+| Tagihan payment generik | `list_payment` → `create_payment` |
 | Order + pengiriman + payment terpadu | `ongkir` → `list_payment` → `submit` |
 
 `/order` dan `/submit` bukan alias. `/order` mengembalikan `awb` langsung untuk flow pengiriman; `/submit` mengembalikan rincian biaya, pickup, buyer, dan instruksi payment pada satu transaksi.
@@ -424,7 +426,10 @@ Jangan menghitung total final hanya dari tabel ini bila endpoint transaksi sudah
 
 `POST /api/h2h/submit`
 
-Membuat order terpadu dengan pengiriman dan channel pembayaran.
+Membuat order dan instruksi pembayaran. Koleksi Postman mendokumentasikan flow
+terpadu dengan pengiriman. Akun yang telah menyepakati `courir_id: 1` sebagai
+produk digital dapat memakai endpoint yang sama sebagai payment-only tanpa AWB,
+pickup, booking courier, atau dispatch.
 
 ### Request
 
@@ -460,7 +465,11 @@ Membuat order terpadu dengan pengiriman dan channel pembayaran.
 }
 ```
 
-`courir_id` berasal dari Cek Ongkir. `channel_code` berasal dari List Payment Channel. Contoh vendor memakai `COD` pada request aktif dan `QRIS` pada stored response; keduanya menunjukkan endpoint ini memilih payment dalam flow order.
+Untuk produk fisik, `courir_id` wajib berasal dari Cek Ongkir. Untuk profil
+payment-only/digital yang telah disetujui AutoLaris, gunakan `courir_id: 1` dan
+`cod_value: "0"`; field alamat/dimensi tetap memenuhi schema, bukan instruksi
+pengiriman. `channel_code` berasal dari List Payment Channel. Jangan memakai
+konvensi digital ini pada akun lain tanpa konfirmasi provider.
 
 ### Response sukses
 
@@ -520,6 +529,52 @@ Koleksi terbaru tidak memperlihatkan `awb` pada response Create Order. Konfirmas
 
 ---
 
+## 8. Advice
+
+`POST /api/h2h/advice`
+
+Membaca status satu transaksi berdasarkan identifier yang diterbitkan provider.
+Pasang pada cron atau scheduled job; jangan membuat transaksi baru untuk sekadar
+mengecek pembayaran.
+
+### Request
+
+```json
+{
+  "transaction_id": "986770"
+}
+```
+
+Untuk `/submit`, gunakan `data.transaction_id`. Bila flow lain menerbitkan
+`trx_id`, simpan identifier itu sebagai provider transaction ID dan kirim nilainya
+apa adanya.
+
+### Response yang telah diamati
+
+```json
+{
+  "rc": "02",
+  "ket": "PENDING",
+  "data": {
+    "awb": ""
+  }
+}
+```
+
+Aturan aman:
+
+- `02/PENDING`: transaksi belum lunas; tidak ada state transition;
+- `DELIVERED`: vocabulary pengiriman, bukan bukti settlement payment;
+- hanya kombinasi code dan status settlement yang dikonfirmasi AutoLaris boleh
+  mengubah pembayaran menjadi paid;
+- simpan response mentah yang sudah direduksi dari data sensitif untuk audit;
+- update lokal harus idempotent dan tidak boleh memicu pengiriman otomatis.
+
+Koleksi mempublikasikan request Advice tetapi belum memberi daftar lengkap
+response code/status atau mapping settlement final.
+
+---
+
 ## Error handling
 
 Kode yang teramati pada dokumentasi repository dan koleksi:
@@ -546,10 +601,10 @@ Belum dipublikasikan pada koleksi:
 
 - required/optional matrix formal untuk seluruh field;
 - callback payload, signature, source IP, dan retry policy;
-- payment inquiry endpoint;
+- mapping lengkap response Advice dan settlement final;
 - timezone `expired`;
 - seluruh error code dan rate limit;
-- cara mengambil `awb` setelah Create Order `/submit`.
+- cara mengambil `awb` setelah Create Order `/submit` untuk produk fisik.
 
 Konfirmasikan bagian tersebut kepada AutoLaris sebelum go-live.
 

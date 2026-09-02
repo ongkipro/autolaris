@@ -1,14 +1,31 @@
 # AutoLaris H2H — Payment Gateway
 
-Dokumen ini membahas tiga endpoint yang berkaitan dengan payment:
+Dokumen ini membahas empat endpoint yang berkaitan dengan payment:
 
 | Endpoint | Kegunaan |
 |---|---|
 | `GET /api/h2h/list_payment` | Channel aktif dan konfigurasi fee akun |
 | `POST /api/h2h/create_payment` | Tagihan payment tanpa pengiriman |
 | `POST /api/h2h/submit` | Order, pengiriman, dan payment terpadu |
+| `POST /api/h2h/advice` | Pemeriksaan status berdasarkan provider `transaction_id` |
 
-Snapshot koleksi Postman `latest` diperiksa pada 2026-08-18. Contoh implementasi lintas framework: [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md).
+Snapshot koleksi Postman `latest` diperiksa pada 2026-09-02. Contoh implementasi lintas framework: [INTEGRATION-GUIDE.md](./INTEGRATION-GUIDE.md).
+
+## Profil payment-only yang direkomendasikan untuk integrasi ini
+
+ZvaraShop menggunakan **Create Order `/submit`** sebagai payment gateway
+non-fisik. Transaksi dicatat di AutoLaris sebagai produk digital, subscription,
+atau pembayaran non-produk-fisik; pengiriman barang tidak dibawa ke AutoLaris.
+
+- `courir_id: 1` adalah klasifikasi non-fisik yang disepakati pada akun;
+- field alamat dan dimensi hanya memenuhi schema `/submit`;
+- tidak ada AWB, pickup, courier booking, atau dispatch;
+- `cod_value: "0"` untuk QRIS/VA;
+- simpan `transaction_id`, lalu periksa melalui `/advice` pada cron;
+- jangan panggil `/create_payment` setelah `/submit` untuk checkout yang sama.
+
+Konvensi `courir_id: 1` bukan kontrak global Postman. Integrator akun lain wajib
+mengonfirmasikannya kepada AutoLaris.
 
 ## 1. Authentication
 
@@ -36,15 +53,17 @@ sequenceDiagram
     participant User as Customer
     App->>API: GET /list_payment
     API-->>App: channel_code + admin + tipe_admin
-    App->>API: POST /create_payment
-    API-->>App: trx_id + instruction + total
+    App->>API: POST /submit (courir_id 1, non-physical)
+    API-->>App: transaction_id + payment_info + total
     App-->>User: Tampilkan VA, QRIS, atau redirect
     User->>API: Bayar sebelum expired
-    API-->>App: Callback (contract belum dipublikasikan)
-    Note over App: Verifikasi, rekonsiliasi, update idempotent
+    App->>API: POST /advice (scheduled)
+    API-->>App: rc + ket
+    Note over App: Update idempotent hanya untuk settlement yang terverifikasi
 ```
 
-Untuk order dengan pengiriman dalam transaksi yang sama, ganti `create_payment` dengan `submit`.
+Untuk produk fisik, ambil `courir_id` dari `/ongkir`; jangan memakai klasifikasi
+non-fisik `1`. Flow fisik tetap mengikuti kontrak Postman.
 
 ## 3. List Payment Channel
 
@@ -193,7 +212,9 @@ Jangan mengubah string QRIS untuk mengganti merchant name; modifikasi payload da
 
 `POST /api/h2h/submit`
 
-Endpoint ini menggabungkan order, pengiriman, dan payment. Gunakan bila checkout membutuhkan satu transaksi terpadu.
+Endpoint ini membuat order sekaligus instruksi payment. Pada kontrak Postman,
+endpoint membawa pengiriman. Pada profil payment-only yang disepakati, gunakan
+`courir_id: 1` agar order dicatat sebagai digital/non-fisik tanpa dispatch.
 
 Input tambahan dibanding Create Payment:
 
@@ -213,7 +234,31 @@ Payload lengkap: [Create Order pada referensi H2H](./AutoLaris-H2H-API.md#7-crea
 
 Jangan memanggil Create Payment lagi untuk `reff_id` yang sudah berhasil diproses oleh Create Order tanpa rekonsiliasi; itu berisiko membuat tagihan kedua.
 
-## 6. Response code dan error handling
+## 6. Advice dan cron payment
+
+`POST /api/h2h/advice`
+
+```json
+{
+  "transaction_id": "986770"
+}
+```
+
+Cron membaca transaksi lokal `pending`/`expired` yang memiliki provider
+`transaction_id`, lalu memanggil Advice secara bounded dan idempotent.
+
+- `02/PENDING` tetap pending;
+- `SUCCESS`/`BERHASIL` terlalu generik dan `DELIVERED` adalah status pengiriman;
+  ketiganya tidak boleh ditafsirkan sebagai lunas;
+- hanya status settlement eksplisit yang telah dikonfirmasi provider boleh
+  menandai transaksi dan order sebagai paid;
+- kegagalan satu transaksi tidak menghentikan transaksi lain;
+- perubahan paid tidak otomatis membuat shipment.
+
+Daftar status final belum dipublikasikan lengkap. Manual reconciliation tetap
+fallback untuk status yang belum terbukti.
+
+## 7. Response code dan error handling
 
 | Kondisi | Deteksi | Tindakan |
 |---|---|---|
@@ -232,11 +277,11 @@ Jangan memanggil Create Payment lagi untuk `reff_id` yang sudah berhasil diprose
 2. Kirim request dengan `reff_id` tersebut.
 3. Pada sukses, simpan `trx_id` atau `transaction_id` secara atomik.
 4. Pada timeout, jangan mengganti `reff_id` dan jangan langsung membuat tagihan baru.
-5. Karena endpoint inquiry payment belum dipublikasikan, lakukan rekonsiliasi melalui AutoLaris sebelum retry yang dapat membuat transaksi baru.
+5. Gunakan `/advice` terhadap provider transaction ID sebelum retry yang dapat membuat transaksi baru.
 
 Create Resi mendokumentasikan `reff_id` maksimal 30 digit dan tidak boleh sama pada hari yang sama. Koleksi belum menyatakan aturan persis untuk Create Payment atau Create Order.
 
-## 7. Callback: kontrak belum cukup untuk handler production
+## 8. Callback: kontrak belum cukup untuk handler production
 
 Koleksi publik menyebut `callback_url`, tetapi belum mendefinisikan:
 
@@ -271,7 +316,7 @@ Setelah kontrak nyata diterima, implementasikan:
 - audit log tanpa secret/data sensitif;
 - response cepat, lalu proses lanjutan secara asynchronous bila perlu.
 
-## 8. Pertanyaan wajib sebelum go-live
+## 9. Pertanyaan wajib sebelum go-live
 
 | # | Pertanyaan ke AutoLaris |
 |---|---|
@@ -280,13 +325,13 @@ Setelah kontrak nyata diterima, implementasikan:
 | 3 | Bagaimana verifikasi signature/HMAC atau source IP? |
 | 4 | Apa retry policy, timeout, ordering, dan response acknowledgement? |
 | 5 | Apa timezone untuk `expired` dan timestamp callback? |
-| 6 | Adakah endpoint inquiry payment untuk rekonsiliasi? |
+| 6 | Apa mapping lengkap code/status Advice, dan kombinasi mana yang final paid? |
 | 7 | Apa aturan duplicate `reff_id` pada Create Payment dan Create Order? |
 | 8 | Apa minimum/maksimum amount dan rate limit? |
 | 9 | Bagaimana memperoleh `awb` setelah Create Order `/submit`? |
 | 10 | Channel mana yang aktif di production merchant ini? |
 
-## 9. Checklist go-live
+## 10. Checklist go-live
 
 - [ ] API Key production berada di secret manager/server environment.
 - [ ] IP egress production sudah di-whitelist.
@@ -294,6 +339,7 @@ Setelah kontrak nyata diterima, implementasikan:
 - [ ] UI menampilkan `total` dari response transaksi.
 - [ ] `reff_id`, `trx_id`, dan `transaction_id` tersimpan dan dapat direkonsiliasi.
 - [ ] Timeout tidak membuat tagihan kedua secara otomatis.
+- [ ] Cron Advice telah diuji dan `DELIVERED` tidak mengubah payment menjadi paid.
 - [ ] Callback contract, signature, status, dan retry sudah dikonfirmasi.
 - [ ] Callback handler idempotent dan menolak state regression.
 - [ ] QRIS/VA/e-wallet diuji per channel yang aktif.
