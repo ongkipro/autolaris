@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const markdownFiles = [
   "README.md",
+  "docs/getting-started.md",
   "docs/reference/h2h-api.md",
   "docs/guides/payment-gateway.md",
   "docs/guides/integration.md",

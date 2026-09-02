@@ -4,7 +4,7 @@
 
 **A practical, independent reference for secure server-side AutoLaris H2H integrations.**
 
-[Documentation](#start-here) · [H2H Reference](./docs/reference/h2h-api.md) · [Payment Guide](./docs/guides/payment-gateway.md) · [Integration Guide](./docs/guides/integration.md) · [OpenAPI](./openapi/autolaris-h2h.openapi.json)
+[Getting Started](./docs/getting-started.md) · [H2H Reference](./docs/reference/h2h-api.md) · [Payment Guide](./docs/guides/payment-gateway.md) · [Integration Guide](./docs/guides/integration.md) · [OpenAPI](./openapi/autolaris-h2h.openapi.json)
 
 [![Release](https://img.shields.io/github/v/release/ongkipro/autolaris?display_name=tag&sort=semver)](https://github.com/ongkipro/autolaris/releases)
 [![Documentation validation](https://github.com/ongkipro/autolaris/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/ongkipro/autolaris/actions/workflows/validate.yml)
@@ -45,6 +45,7 @@ an invented mapping for undocumented provider statuses.
 
 | Need | Read |
 |---|---|
+| Set up, choose a flow, and verify a first request | [Getting started](./docs/getting-started.md) |
 | Endpoint reference, fields, and response examples | [H2H API reference](./docs/reference/h2h-api.md) |
 | Payment channels, QRIS/VA, Create Order, and Advice | [Payment gateway guide](./docs/guides/payment-gateway.md) |
 | Framework implementation and retry/reconciliation patterns | [Integration guide](./docs/guides/integration.md) |
@@ -150,6 +151,7 @@ undocumented. Keep manual reconciliation available for unproven states.
 ```text
 .
 ├── docs/
+│   ├── getting-started.md            # Programmer onboarding and first request
 │   ├── guides/                       # Payment and framework implementation guides
 │   └── reference/                    # Endpoint-by-endpoint H2H reference
 ├── openapi/                          # Machine-readable API contract
